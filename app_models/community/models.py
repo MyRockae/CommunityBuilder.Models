@@ -4,10 +4,17 @@ from django.dispatch import receiver
 from django.utils.text import slugify
 from app_models.account.models import User
 from app_models.shared.models import Tag
+from app_models.shared.validators import slug_username_validator
 
 class Community(models.Model):
     name = models.CharField(max_length=255)
-    alias = models.SlugField(max_length=255, unique=True, db_index=True, help_text='Unique URL-friendly identifier for the community')
+    alias = models.SlugField(
+        max_length=255,
+        unique=True,
+        db_index=True,
+        validators=[slug_username_validator],
+        help_text='Unique URL-friendly identifier. Only letters, numbers, hyphens (-) and underscores (_) allowed.',
+    )
     summary = models.CharField(max_length=500, blank=True, null=True, help_text='Short summary of the community')
     description = models.TextField(blank=True, null=True)
     public_notes = models.TextField(blank=True, null=True, help_text='Public notes visible to all community members and visitors')

@@ -2,6 +2,7 @@ from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
 from django.db import models
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from app_models.shared.validators import slug_username_validator
 
 class UserRole(models.Model):
     """User role model with admin and user roles"""
@@ -52,7 +53,15 @@ class CustomUserManager(BaseUserManager):
             
 class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
-    username = models.CharField(max_length=150, unique=True, blank=True, null=True, db_index=True)
+    username = models.CharField(
+        max_length=150,
+        unique=True,
+        blank=True,
+        null=True,
+        db_index=True,
+        validators=[slug_username_validator],
+        help_text='Only letters, numbers, hyphens (-) and underscores (_) allowed.',
+    )
     password = models.CharField(max_length=128)  # Hashed password (from AbstractBaseUser)
     role = models.ForeignKey(UserRole, on_delete=models.SET_NULL, null=True, blank=True, related_name='users')
     is_active = models.BooleanField(default=True)
