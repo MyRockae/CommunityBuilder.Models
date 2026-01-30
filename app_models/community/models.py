@@ -206,6 +206,7 @@ class CommunityFeaturedContent(models.Model):
     
     order = models.IntegerField(default=0, help_text='Display order (lower numbers appear first)')
     is_active = models.BooleanField(default=True, help_text='Whether this featured content is currently active')
+    is_public = models.BooleanField(default=True, help_text='Whether this featured content is public (visible to non-members)')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
