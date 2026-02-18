@@ -31,6 +31,7 @@ class Post(models.Model):
     parent_post = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies', help_text='Parent post if this is a reply')
     message = models.TextField(help_text='Post message content')
     allow_replies = models.BooleanField(default=True, help_text='If true, users can reply to this post. If false, replies are disabled.')
+    is_pinned = models.BooleanField(default=False, help_text='If true, this post is pinned (shown before regular posts).')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -38,7 +39,7 @@ class Post(models.Model):
         db_table = 'Post'
         verbose_name = 'Post'
         verbose_name_plural = 'Posts'
-        ordering = ['-created_at']
+        ordering = ['-is_pinned', '-created_at']
     
     def __str__(self):
         return f"Post by {self.user.email} on {self.forum.name}"
