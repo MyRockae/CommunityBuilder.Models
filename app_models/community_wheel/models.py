@@ -60,6 +60,11 @@ class Wheel(models.Model):
         null=True,
         help_text='Optional max participants when joining via link',
     )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Optional notes for the wheel',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
