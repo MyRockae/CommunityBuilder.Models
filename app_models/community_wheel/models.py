@@ -35,7 +35,7 @@ class Wheel(models.Model):
         help_text='Owner or moderator who created the wheel',
     )
     title = models.CharField(max_length=255, blank=True, null=True, help_text='Optional short name for the wheel')
-    request_message = models.TextField(help_text='The instruction (e.g. pay 200$, send a gift)')
+    description = models.TextField(help_text='The instruction or description (e.g. pay 200$, send a gift)')
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
@@ -60,10 +60,10 @@ class Wheel(models.Model):
         null=True,
         help_text='Optional max participants when joining via link',
     )
-    notes = models.TextField(
+    message = models.TextField(
         blank=True,
         null=True,
-        help_text='Optional notes for the wheel',
+        help_text='Optional message for the wheel',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
