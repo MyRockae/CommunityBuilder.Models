@@ -48,10 +48,6 @@ class Wheel(models.Model):
         default='chain',
         help_text='Wheel mode: chain (each member acts for the next) or collective (all act for one, then rotate)',
     )
-    auto_approve_link_joins = models.BooleanField(
-        default=False,
-        help_text='If true (open wheel), users who join via link become participants automatically. If false (closed wheel), joins via link require approval.',
-    )
     max_favor_duration_days = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -100,12 +96,6 @@ class WheelParticipant(models.Model):
         blank=True,
         null=True,
         help_text='Member reference info (e.g. account number) for the person doing the request for them',
-    )
-    join_remark = models.CharField(
-        max_length=255,
-        blank=True,
-        null=True,
-        help_text='API-set text describing how they joined (e.g. "added by owner", "joined via link")',
     )
     approval_status = models.CharField(
         max_length=20,
@@ -223,77 +213,3 @@ class WheelHandoffAttachment(models.Model):
 
     def __str__(self):
         return f"{self.file_type} for handoff {self.wheel_handoff_id}"
-
-
-class WheelJoinLink(models.Model):
-    """Shareable link for members to request to join a wheel; owner approves."""
-    wheel = models.ForeignKey(
-        Wheel,
-        on_delete=models.CASCADE,
-        related_name='join_links',
-    )
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='created_wheel_join_links',
-    )
-    token = models.CharField(max_length=64, unique=True, db_index=True, help_text='Unique token for the join URL')
-    expires_at = models.DateTimeField(null=True, blank=True)
-    max_joins = models.PositiveIntegerField(null=True, blank=True, help_text='Optional limit on number of joins')
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'WheelJoinLink'
-        verbose_name = 'Wheel Join Link'
-        verbose_name_plural = 'Wheel Join Links'
-        ordering = ['-created_at']
-
-    def __str__(self):
-        return f"Join link for wheel {self.wheel_id} ({self.token})"
-
-
-class WheelJoinRequest(models.Model):
-    """Request to join a wheel (e.g. via link); owner approves or rejects."""
-    STATUS_CHOICES = [
-        ('pending', 'Pending'),
-        ('approved', 'Approved'),
-        ('rejected', 'Rejected'),
-    ]
-
-    wheel = models.ForeignKey(
-        Wheel,
-        on_delete=models.CASCADE,
-        related_name='join_requests',
-    )
-    user = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='wheel_join_requests',
-    )
-    join_link = models.ForeignKey(
-        WheelJoinLink,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='join_requests',
-    )
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', db_index=True)
-    approved_by = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='approved_wheel_join_requests',
-    )
-    approved_at = models.DateTimeField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        db_table = 'WheelJoinRequest'
-        verbose_name = 'Wheel Join Request'
-        verbose_name_plural = 'Wheel Join Requests'
-        ordering = ['-created_at']
-        unique_together = [['wheel', 'user']]
-
-    def __str__(self):
-        return f"{self.user.email} → wheel {self.wheel_id} ({self.status})"
