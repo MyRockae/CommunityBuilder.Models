@@ -17,11 +17,6 @@ class Wheel(models.Model):
         ('cancelled', 'Cancelled'),
     ]
 
-    WHEEL_MODE_CHOICES = [
-        ('chain', 'Chain (sequential one-to-next)'),
-        ('collective', 'Collective support (all-for-one rotation)'),
-    ]
-
     community = models.ForeignKey(
         Community,
         on_delete=models.CASCADE,
@@ -41,12 +36,6 @@ class Wheel(models.Model):
         choices=STATUS_CHOICES,
         default='draft',
         db_index=True,
-    )
-    mode = models.CharField(
-        max_length=20,
-        choices=WHEEL_MODE_CHOICES,
-        default='chain',
-        help_text='Wheel mode: chain (each member acts for the next) or collective (all act for one, then rotate)',
     )
     started_at = models.DateTimeField(
         null=True,
