@@ -48,12 +48,15 @@ class Wheel(models.Model):
         default='chain',
         help_text='Wheel mode: chain (each member acts for the next) or collective (all act for one, then rotate)',
     )
-    max_favor_duration_days = models.DecimalField(
-        max_digits=5,
-        decimal_places=2,
+    started_at = models.DateTimeField(
         null=True,
         blank=True,
-        help_text='Maximum time a participant has to fulfil a wheel favour (in days, decimal allowed, e.g. 0.2)',
+        help_text='When the wheel/Ajo was started. First recipient’s round starts on this date.',
+    )
+    round_duration_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Length of each recipient’s round in days (e.g. 30). Deadline to pay = end of their round.',
     )
     max_members = models.PositiveIntegerField(
         blank=True,
@@ -116,6 +119,11 @@ class WheelParticipant(models.Model):
         related_name='approved_wheel_joins',
     )
     approved_at = models.DateTimeField(null=True, blank=True)
+    round_received_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When this participant received everyone’s contribution (their round done). Next person’s round starts on this date.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
