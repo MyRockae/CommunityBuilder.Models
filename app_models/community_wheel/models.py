@@ -196,7 +196,7 @@ class WheelHandoff(models.Model):
         verbose_name = 'Wheel Handoff'
         verbose_name_plural = 'Wheel Handoffs'
         ordering = ['wheel', 'from_participant__order']
-        unique_together = [['wheel', 'from_participant']]
+        unique_together = [['wheel', 'from_participant', 'to_participant']]
 
     def __str__(self):
         return f"Wheel {self.wheel_id}: {self.from_participant_id} → {self.to_participant_id} ({self.status})"
