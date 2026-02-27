@@ -18,6 +18,7 @@ class ClassroomContent(models.Model):
     description = models.TextField(blank=True, null=True, help_text='Description of the classroom content')
     notes = models.TextField(blank=True, null=True, help_text='Classroom content notes/details')
     content_url = models.URLField(blank=True, null=True, help_text='URL of the classroom content (video, document, etc.)')
+    thumbnail_url = models.URLField(blank=True, null=True, help_text='URL of the thumbnail image for this content')
     content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES, default='other', help_text='Type of content (video, document, article, link, other)')
     is_active = models.BooleanField(default=True, help_text='Whether this content is active and visible to members. Owners and moderators can see inactive content.')
     order = models.IntegerField(default=0, help_text='Display order (lower numbers appear first). Used for drag-and-drop reordering by owners/moderators.')
