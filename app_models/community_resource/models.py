@@ -58,6 +58,12 @@ class ResourceContent(models.Model):
         related_name='contents',
         help_text='Resource (folder) this file belongs to',
     )
+    title = models.CharField(max_length=255, help_text='Title of this content (file)')
+    description = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Description of this content',
+    )
     content_type = models.CharField(
         max_length=50,
         help_text='Type of file (e.g. video, document, pdf, image). API-defined.',
@@ -75,4 +81,4 @@ class ResourceContent(models.Model):
         ordering = ['-created_at']
 
     def __str__(self):
-        return f"{self.content_type} - {self.resource.friendly_name}"
+        return f"{self.title} - {self.resource.friendly_name}"
