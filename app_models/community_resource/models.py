@@ -68,6 +68,16 @@ class ResourceContent(models.Model):
         null=True,
         help_text='Description of this content',
     )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text='Display order (lower numbers appear first)',
+    )
+    resource_type = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Type/category of resource content (API-defined string)',
+    )
     content_type = models.CharField(
         max_length=50,
         help_text='Type of file (e.g. video, document, pdf, image). API-defined.',
@@ -81,6 +91,11 @@ class ResourceContent(models.Model):
     file_url = models.URLField(
         help_text='URL of the file in storage (e.g. MinIO bucket)',
     )
+    thumbnail_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='URL of the thumbnail image for this content',
+    )
     is_active = models.BooleanField(
         default=True,
         help_text='Whether this content is active and visible. Inactive content can be hidden from members.',
@@ -92,7 +107,7 @@ class ResourceContent(models.Model):
         db_table = 'ResourceContent'
         verbose_name = 'Resource Content'
         verbose_name_plural = 'Resource Contents'
-        ordering = ['-created_at']
+        ordering = ['order', '-created_at']
 
     def __str__(self):
         return f"{self.title} - {self.resource.friendly_name}"
