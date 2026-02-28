@@ -4,22 +4,19 @@ from app_models.account.models import User
 
 
 class ClassroomContent(models.Model):
-    """Classroom content model - contains title, description, notes, content_url, and content_type"""
-    CONTENT_TYPE_CHOICES = [
-        ('video', 'Video'),
-        ('document', 'Document'),
-        ('article', 'Article'),
-        ('link', 'Link'),
-        ('other', 'Other'),
-    ]
-    
+    """Classroom content model - video only; content_source indicates upload vs youtube, vimeo, twitter, etc."""
     classroom = models.ForeignKey(Classroom, on_delete=models.CASCADE, related_name='contents', help_text='Classroom this content belongs to')
     title = models.CharField(max_length=255, help_text='Title of the classroom content')
     description = models.TextField(blank=True, null=True, help_text='Description of the classroom content')
     notes = models.TextField(blank=True, null=True, help_text='Classroom content notes/details')
-    content_url = models.URLField(blank=True, null=True, help_text='URL of the classroom content (video, document, etc.)')
+    content_url = models.URLField(blank=True, null=True, help_text='URL of the classroom content (video)')
     thumbnail_url = models.URLField(blank=True, null=True, help_text='URL of the thumbnail image for this content')
-    content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES, default='other', help_text='Type of content (video, document, article, link, other)')
+    content_source = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Source of the video, e.g. upload, youtube, vimeo, twitter (API-defined string)',
+    )
     is_active = models.BooleanField(default=True, help_text='Whether this content is active and visible to members. Owners and moderators can see inactive content.')
     order = models.IntegerField(default=0, help_text='Display order (lower numbers appear first). Used for drag-and-drop reordering by owners/moderators.')
     created_at = models.DateTimeField(auto_now_add=True)
