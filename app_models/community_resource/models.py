@@ -34,6 +34,10 @@ class Resource(models.Model):
         blank=True,
         help_text='Payment plans that have access to this resource. Zero or many.',
     )
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Whether this resource is active and visible. Inactive resources can be hidden from members.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -76,6 +80,10 @@ class ResourceContent(models.Model):
     )
     file_url = models.URLField(
         help_text='URL of the file in storage (e.g. MinIO bucket)',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Whether this content is active and visible. Inactive content can be hidden from members.',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
