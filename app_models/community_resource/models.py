@@ -68,6 +68,12 @@ class ResourceContent(models.Model):
         max_length=50,
         help_text='Type of file (e.g. video, document, pdf, image). API-defined.',
     )
+    content_source = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='Source of the content, e.g. upload, youtube, vimeo (API-defined string)',
+    )
     file_url = models.URLField(
         help_text='URL of the file in storage (e.g. MinIO bucket)',
     )
