@@ -1,0 +1,78 @@
+from django.db import models
+from app_models.community.models import Community, PaymentPlan
+from app_models.shared.validators import slug_username_validator
+
+
+class Resource(models.Model):
+    """
+    Resource is a folder for a community: name, friendly name, description.
+    Can be associated with zero or many payment plans for access control.
+    """
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='resources',
+        help_text='Community this resource belongs to',
+    )
+    name = models.CharField(
+        max_length=255,
+        validators=[slug_username_validator],
+        help_text='Slug-like name (letters, numbers, hyphens, underscores). Used for URL/folder identifier.',
+    )
+    friendly_name = models.CharField(
+        max_length=255,
+        help_text='Display name for the resource (folder name shown on frontend)',
+    )
+    description = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Description of the resource',
+    )
+    payment_plans = models.ManyToManyField(
+        PaymentPlan,
+        related_name='resources',
+        blank=True,
+        help_text='Payment plans that have access to this resource. Zero or many.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'Resource'
+        verbose_name = 'Resource'
+        verbose_name_plural = 'Resources'
+        unique_together = ['community', 'name']
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.friendly_name} - {self.community.name}"
+
+
+class ResourceContent(models.Model):
+    """
+    A file within a resource. Files are stored in storage buckets; file_url points to the object.
+    """
+    resource = models.ForeignKey(
+        Resource,
+        on_delete=models.CASCADE,
+        related_name='contents',
+        help_text='Resource (folder) this file belongs to',
+    )
+    content_type = models.CharField(
+        max_length=50,
+        help_text='Type of file (e.g. video, document, pdf, image). API-defined.',
+    )
+    file_url = models.URLField(
+        help_text='URL of the file in storage (e.g. MinIO bucket)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ResourceContent'
+        verbose_name = 'Resource Content'
+        verbose_name_plural = 'Resource Contents'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.content_type} - {self.resource.friendly_name}"
