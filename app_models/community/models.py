@@ -85,6 +85,7 @@ class CommunityMember(models.Model):
         related_name='blocked_memberships',
         help_text='User who blocked this member'
     )
+    points = models.PositiveBigIntegerField(default=0, help_text='Cumulative points for community leaderboard')
 
     class Meta:
         db_table = 'CommunityMember'
