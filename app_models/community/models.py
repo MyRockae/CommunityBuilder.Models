@@ -188,49 +188,6 @@ class UserPaymentPlan(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.payment_plan.name} ({self.community.name})"
 
-class CommunityFeaturedContent(models.Model):
-    """Featured content for a community - can be image or video (uploaded file or external URL)"""
-    CONTENT_TYPE_CHOICES = [
-        ('image', 'Image'),
-        ('video', 'Video'),
-    ]
-    
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='featured_contents')
-    content_type = models.CharField(max_length=20, choices=CONTENT_TYPE_CHOICES, help_text='Type of featured content: "image" or "video"')
-    title = models.CharField(max_length=255, blank=True, null=True, help_text='Title for the featured content')
-    description = models.TextField(blank=True, null=True, help_text='Description of the featured content')
-    
-    # Only one of these will be populated based on content_type
-    image_url = models.URLField(blank=True, null=True, help_text='URL of the featured image (if content_type is image)')
-    video_url = models.URLField(blank=True, null=True, help_text='Video URL - can be uploaded video file URL (MinIO) or external video URL (YouTube, Vimeo, etc.) (if content_type is video)')
-    
-    order = models.IntegerField(default=0, help_text='Display order (lower numbers appear first)')
-    is_active = models.BooleanField(default=True, help_text='Whether this featured content is currently active')
-    is_public = models.BooleanField(default=True, help_text='Whether this featured content is public (visible to non-members)')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        db_table = 'CommunityFeaturedContent'
-        verbose_name = 'Community Featured Content'
-        verbose_name_plural = 'Community Featured Contents'
-        ordering = ['order', '-created_at']
-        indexes = [
-            models.Index(fields=['community', 'is_active']),
-        ]
-    
-    def __str__(self):
-        return f"{self.get_content_type_display()} - {self.community.name}"
-    
-    def clean(self):
-        """Validate that the appropriate URL field is set based on content_type"""
-        from django.core.exceptions import ValidationError
-        
-        if self.content_type == 'image' and not self.image_url:
-            raise ValidationError({'image_url': 'Image URL is required when content_type is image'})
-        elif self.content_type == 'video' and not self.video_url:
-            raise ValidationError({'video_url': 'Video URL is required when content_type is video'})
-
 # Signal to create default "hobby plan" when a community is created
 @receiver(post_save, sender=Community)
 def create_default_payment_plan(sender, instance, created, **kwargs):
