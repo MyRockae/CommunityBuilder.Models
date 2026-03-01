@@ -188,6 +188,75 @@ class UserPaymentPlan(models.Model):
     def __str__(self):
         return f"{self.user.email} - {self.payment_plan.name} ({self.community.name})"
 
+class CommunityBadgeDefinition(models.Model):
+    """
+    Community-level badge definition. e.g. first_post, posts_5, post_likes_100.
+    """
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='badge_definitions',
+        help_text='Community this badge belongs to',
+    )
+    code = models.CharField(
+        max_length=64,
+        help_text='Unique code within the community (e.g. first_post, posts_5, post_likes_100)',
+    )
+    name = models.CharField(max_length=255, help_text='Display name of the badge')
+    description = models.TextField(blank=True, null=True, help_text='Short description of how to earn this badge')
+    icon_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='URL of the badge icon image (optional)',
+    )
+    criteria = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Optional criteria (e.g. {"min_posts": 5})',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CommunityBadgeDefinition'
+        verbose_name = 'Community Badge Definition'
+        verbose_name_plural = 'Community Badge Definitions'
+        unique_together = ['community', 'code']
+        ordering = ['community', 'code']
+
+    def __str__(self):
+        return f"{self.name} ({self.code}) - {self.community.name}"
+
+
+class CommunityMemberBadge(models.Model):
+    """
+    Links a community member to a community-level badge they have been awarded.
+    """
+    community_member = models.ForeignKey(
+        CommunityMember,
+        on_delete=models.CASCADE,
+        related_name='badges',
+        help_text='Community member who was awarded this badge',
+    )
+    community_badge = models.ForeignKey(
+        CommunityBadgeDefinition,
+        on_delete=models.CASCADE,
+        related_name='member_badges',
+        help_text='The community badge that was awarded',
+    )
+    awarded_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'CommunityMemberBadge'
+        verbose_name = 'Community Member Badge'
+        verbose_name_plural = 'Community Member Badges'
+        unique_together = ['community_member', 'community_badge']
+        ordering = ['-awarded_at']
+
+    def __str__(self):
+        return f"{self.community_member.user.email} - {self.community_badge.code} ({self.community_member.community.name})"
+
+
 # Signal to create default "hobby plan" when a community is created
 @receiver(post_save, sender=Community)
 def create_default_payment_plan(sender, instance, created, **kwargs):
