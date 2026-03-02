@@ -17,6 +17,7 @@ class Classroom(models.Model):
     payment_plans = models.ManyToManyField(PaymentPlan, related_name='classrooms', blank=True, help_text='Payment plans that have access to this classroom')
     enforce_progression = models.BooleanField(default=False, help_text='If True, users must complete content in order (one at a time). Owners/moderators can view all content regardless.')
     issue_certificate = models.BooleanField(default=False, help_text='If True, users will receive a certificate when all content in the classroom is completed')
+    is_published = models.BooleanField(default=False, help_text='If True, the classroom is visible/published to members')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
