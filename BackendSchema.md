@@ -4,7 +4,6 @@
 The backend database is a fully functionaly postgre sql
 
 ## Database Schema
-
 ### User Table
 | Column Name | Data Type | Constraints |
 |-------------|-----------|-------------|
