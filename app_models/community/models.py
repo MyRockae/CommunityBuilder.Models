@@ -1,10 +1,16 @@
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from django.utils import timezone
 from django.utils.text import slugify
 from app_models.account.models import User
 from app_models.shared.models import Tag
 from app_models.shared.validators import slug_username_validator
+
+
+def _current_year():
+    return timezone.now().year
+
 
 class Community(models.Model):
     name = models.CharField(max_length=255)
@@ -86,6 +92,10 @@ class CommunityMember(models.Model):
         help_text='User who blocked this member'
     )
     points = models.PositiveBigIntegerField(default=0, help_text='Cumulative points for community leaderboard')
+    leaderboard_year = models.PositiveSmallIntegerField(
+        default=_current_year,
+        help_text='Year this leaderboard period applies to; points reset when year changes.',
+    )
 
     class Meta:
         db_table = 'CommunityMember'
