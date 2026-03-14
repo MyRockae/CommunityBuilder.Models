@@ -145,6 +145,35 @@ class CommunityLike(models.Model):
     def __str__(self):
         return f"{self.user.email} liked {self.community.name}"
 
+
+class CommunityView(models.Model):
+    """Model to track community views (who viewed, when). User is nullable for anonymous views."""
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='community_views',
+        help_text='Community that was viewed',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='community_views',
+        null=True,
+        blank=True,
+        help_text='User who viewed; null for anonymous views.',
+    )
+    viewed_at = models.DateTimeField(auto_now_add=True, help_text='When the view was recorded')
+
+    class Meta:
+        db_table = 'CommunityView'
+        verbose_name = 'Community View'
+        verbose_name_plural = 'Community Views'
+        ordering = ['-viewed_at']
+
+    def __str__(self):
+        viewer = self.user.email if self.user else 'anonymous'
+        return f"{viewer} viewed {self.community.name} at {self.viewed_at}"
+
 class PaymentPlan(models.Model):
     """Payment plan model for communities"""
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='payment_plans')
