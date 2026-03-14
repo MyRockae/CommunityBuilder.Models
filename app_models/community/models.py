@@ -163,6 +163,11 @@ class CommunityView(models.Model):
         help_text='User who viewed; null for anonymous views.',
     )
     viewed_at = models.DateTimeField(auto_now_add=True, help_text='When the view was recorded')
+    referrer_url = models.URLField(max_length=2048, blank=True, null=True, help_text='URL of the referring page')
+    referrer_domain = models.CharField(max_length=255, blank=True, null=True, help_text='Domain of the referrer')
+    country = models.CharField(max_length=100, blank=True, null=True, help_text='Country of the viewer')
+    region = models.CharField(max_length=100, blank=True, null=True, help_text='Region/state of the viewer')
+    city = models.CharField(max_length=100, blank=True, null=True, help_text='City of the viewer')
 
     class Meta:
         db_table = 'CommunityView'
