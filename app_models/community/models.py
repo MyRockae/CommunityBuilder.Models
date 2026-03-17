@@ -31,6 +31,8 @@ class Community(models.Model):
     avatar_url = models.URLField(blank=True, null=True)
     banner_url = models.URLField(blank=True, null=True)
     tags = models.ManyToManyField(Tag, related_name='communities', blank=True)
+    is_active = models.BooleanField(default=True, help_text='If false, the community is hidden or disabled.')
+    flag_count = models.PositiveIntegerField(default=0, help_text='Number of times the community has been flagged by users.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     members = models.ManyToManyField(User, through='CommunityMember', through_fields=('community', 'user'), related_name='communities')
