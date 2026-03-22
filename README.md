@@ -24,7 +24,7 @@ Shared Django models package for the CommunityBuilder platform. Use this repo as
 | `community_resource` | Resource, ResourceContent (file folders + files) |
 | `community_quiz` | Quiz, QuizGenerationJob, QuizSubmission |
 | `community_polls` | Poll, PollOption, PollVote |
-| `community_meetings` | Meeting |
+| `community_meetings` | Meeting, MeetingSeries (recurring template) |
 | `community_chat` | Conversation, ConversationParticipant, Message |
 | `community_wheel` | Wheel, WheelParticipant, WheelHandoff, WheelHandoffAttachment (e.g. ajo/savings circles) |
 | `community_publicfeeds` | PublicFeed, PublicFeedsAttachment, PublicFeedsLike |
