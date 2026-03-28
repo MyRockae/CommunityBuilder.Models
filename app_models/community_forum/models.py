@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from app_models.account.models import User
-from app_models.community.models import Community, PaymentPlan
+from app_models.community.models import Community, CommunityGroup
 
 class Forum(models.Model):
     """Forum model for community - each community can have multiple forums"""
@@ -10,7 +10,7 @@ class Forum(models.Model):
     name = models.CharField(max_length=255, help_text='Name of the forum (e.g., "General", "Announcements")')
     description = models.TextField(blank=True, null=True, help_text='Description of the forum')
     restrict_posting_to_owners_moderators = models.BooleanField(default=False, help_text='If true, only owners and moderators can post on this forum. If false, all members can post.')
-    payment_plans = models.ManyToManyField(PaymentPlan, related_name='forums', blank=True, help_text='Payment plans that have access to this forum')
+    payment_plans = models.ManyToManyField(CommunityGroup, related_name='forums', blank=True, help_text='Community groups (tiers) that have access to this forum')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

@@ -1,5 +1,5 @@
 from django.db import models
-from app_models.community.models import Community, PaymentPlan
+from app_models.community.models import Community, CommunityGroup
 from app_models.shared.validators import slug_username_validator
 
 
@@ -29,10 +29,10 @@ class Resource(models.Model):
         help_text='Description of the resource',
     )
     payment_plans = models.ManyToManyField(
-        PaymentPlan,
+        CommunityGroup,
         related_name='resources',
         blank=True,
-        help_text='Payment plans that have access to this resource. Zero or many.',
+        help_text='Community groups (tiers) that have access to this resource. Zero or many.',
     )
     is_active = models.BooleanField(
         default=True,

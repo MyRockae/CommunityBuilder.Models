@@ -1,7 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
-from app_models.community.models import Community, PaymentPlan
+from app_models.community.models import Community, CommunityGroup
 from app_models.account.models import User
 
 
@@ -82,10 +82,10 @@ class MeetingSeries(models.Model):
         help_text='Total occurrences including the first when end type is AFTER_COUNT',
     )
     payment_plans = models.ManyToManyField(
-        PaymentPlan,
+        CommunityGroup,
         related_name='meeting_series',
         blank=True,
-        help_text='Payment plans that have access to this series',
+        help_text='Community groups (tiers) that have access to this series',
     )
     attendees = models.ManyToManyField(
         User,
@@ -102,7 +102,10 @@ class MeetingSeries(models.Model):
         verbose_name_plural = 'Meeting Series'
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['community', 'created_at']),
+            models.Index(
+                fields=['community', 'created_at'],
+                name='MeetingSer_communi_8a1b2c_idx',
+            ),
         ]
 
     def __str__(self):
@@ -190,7 +193,7 @@ class Meeting(models.Model):
         blank=True,
         help_text='Stable ordering within a series (e.g. 1-based occurrence index)',
     )
-    payment_plans = models.ManyToManyField(PaymentPlan, related_name='meetings', blank=True, help_text='Payment plans that have access to this meeting')
+    payment_plans = models.ManyToManyField(CommunityGroup, related_name='meetings', blank=True, help_text='Community groups (tiers) that have access to this meeting')
     attendees = models.ManyToManyField(User, related_name='meetings_attending', blank=True, help_text='Users invited to the meeting')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

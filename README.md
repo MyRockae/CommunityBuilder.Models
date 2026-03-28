@@ -15,7 +15,7 @@ Shared Django models package for the CommunityBuilder platform. Use this repo as
 | `account` | User, UserRole (custom auth; email as username) |
 | `user_profile` | UserProfile (name, bio, interests, avatar, etc.) |
 | `shared` | Tag, custom API exceptions |
-| `community` | Community, CommunityMember, CommunityLike, CommunityView, PaymentPlan, UserPaymentPlan, CommunityBadgeDefinition, CommunityMemberBadge |
+| `community` | Community, CommunityMember, CommunityLike, CommunityView, CommunityGroup, CommunityGroupAccess, CommunityBadgeDefinition, CommunityMemberBadge |
 | `community_classroom` | Classroom (courses; payment plans, is_published, certificates) |
 | `community_classroom_content` | ClassroomContent, ClassroomAttachment, ClassroomContentCompletion, ClassroomCertificate |
 | `community_forum` | Forum, Post, PostAttachment, PostLike |
@@ -50,3 +50,27 @@ from app_models.community_classroom.models import Classroom
 ```
 
 Run migrations from your Django project so the database schema stays in sync with this package.
+
+### CommunityGroup rename (`community.0011`)
+
+Apply migrations with a **full** `python manage.py migrate`, not `migrate community` alone. If `community.0011` is recorded while follow-up migrations are not, Django can fail on startup with *lazy reference to `community.paymentplan`* because `PaymentPlan` no longer exists in migration state.
+
+**Recovery (PostgreSQL):** if the DB already matches the renamed schema (tables/columns from `0011` and the M2M state-only migrations) but `django_migrations` is missing rows, insert the missing names so state matches reality, then run `migrate` again:
+
+```sql
+INSERT INTO django_migrations (app, name, applied)
+SELECT v.app, v.name, NOW() FROM (VALUES
+  ('community_polls', '0002_alter_poll_payment_plans'),
+  ('community_quiz', '0002_alter_quiz_payment_plans'),
+  ('community_resource', '0006_alter_resource_payment_plans'),
+  ('community_forum', '0003_alter_forum_payment_plans'),
+  ('community_classroom', '0003_alter_classroom_payment_plans'),
+  ('community_meetings', '0003_alter_meeting_payment_plans'),
+  ('app_subscription', '0003_rename_community_group_fields')
+) AS v(app, name)
+WHERE NOT EXISTS (
+  SELECT 1 FROM django_migrations d WHERE d.app = v.app AND d.name = v.name
+);
+```
+
+Skip any row for an app/migration you have not actually applied yet (schema mismatch). If the database was **not** fully migrated through `0011`, roll back with a restore or reverse the schema manually instead of inserting rows.

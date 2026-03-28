@@ -2,7 +2,7 @@ from django.db import models
 from django.utils import timezone
 from decimal import Decimal
 from app_models.account.models import User
-from app_models.community.models import Community, PaymentPlan
+from app_models.community.models import Community, CommunityGroup
 
 
 class AppSubscriptionTier(models.Model):
@@ -22,8 +22,8 @@ class AppSubscriptionTier(models.Model):
     max_communities = models.IntegerField(null=True, blank=True, help_text='Maximum number of communities (null = unlimited)')
     max_members = models.IntegerField(null=True, blank=True, help_text='Maximum members per community (null = unlimited)')
     max_admins = models.IntegerField(null=True, blank=True, help_text='Maximum admins (co-owners + moderators) per community (null = unlimited)')
-    max_free_payment_plans = models.IntegerField(null=True, blank=True, help_text='Maximum free payment plans per community (null = unlimited)')
-    max_paid_payment_plans = models.IntegerField(null=True, blank=True, help_text='Maximum paid payment plans per community (null = unlimited)')
+    max_free_community_groups = models.IntegerField(null=True, blank=True, help_text='Maximum free community groups (tiers) per community (null = unlimited)')
+    max_paid_community_groups = models.IntegerField(null=True, blank=True, help_text='Maximum paid community groups (tiers) per community (null = unlimited)')
     max_quiz_generations_per_month = models.IntegerField(null=True, blank=True, help_text='Maximum quiz generations per month (null = unlimited)')
     max_forums = models.IntegerField(null=True, blank=True, help_text='Maximum forums per community (null = unlimited)')
     max_classrooms = models.IntegerField(null=True, blank=True, help_text='Maximum classrooms per community (null = unlimited)')
@@ -152,7 +152,7 @@ class StorageUsage(models.Model):
 
 
 class CommunityMemberSubscription(models.Model):
-    """Community member subscription: Member subscribes to community payment plan (member → owner, with 2% platform fee)"""
+    """Billing source of truth for a member’s paid community tier (member → owner, with 2% platform fee)."""
     STATUS_CHOICES = [
         ('pending', 'Pending Payment'),
         ('active', 'Active'),
@@ -163,7 +163,7 @@ class CommunityMemberSubscription(models.Model):
     # Foreign keys to models (shared database)
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='community_member_subscriptions', help_text='Member who has the subscription')
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='member_subscriptions', help_text='Community this subscription is for')
-    payment_plan = models.ForeignKey(PaymentPlan, on_delete=models.CASCADE, related_name='member_subscriptions', help_text='Payment plan user is subscribed to')
+    community_group = models.ForeignKey(CommunityGroup, on_delete=models.CASCADE, related_name='member_subscriptions', help_text='Community group (tier) the member is subscribed to')
     
     # Subscription details
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', help_text='Current status of the subscription')
@@ -192,7 +192,7 @@ class CommunityMemberSubscription(models.Model):
         ]
     
     def __str__(self):
-        return f"{self.user.email} - {self.community.name} - {self.payment_plan.name}"
+        return f"{self.user.email} - {self.community.name} - {self.community_group.name}"
     
     def is_active(self):
         """Check if subscription is currently active"""

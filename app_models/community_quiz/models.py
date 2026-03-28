@@ -1,5 +1,5 @@
 from django.db import models
-from app_models.community.models import Community, PaymentPlan
+from app_models.community.models import Community, CommunityGroup
 from app_models.account.models import User
 
 
@@ -12,7 +12,7 @@ class Quiz(models.Model):
     is_timed = models.BooleanField(default=False, help_text='Whether this quiz is timed (has a time limit)')
     has_attempt_limit = models.BooleanField(default=False, help_text='Whether this quiz has a limit on the number of attempts')
     max_attempts = models.PositiveIntegerField(null=True, blank=True, help_text='Maximum number of attempts allowed if has_attempt_limit is True')
-    payment_plans = models.ManyToManyField(PaymentPlan, related_name='quizzes', blank=True, help_text='Payment plans that have access to this quiz. Owners and co-owners have access regardless of payment plan.')
+    payment_plans = models.ManyToManyField(CommunityGroup, related_name='quizzes', blank=True, help_text='Community groups (tiers) that have access to this quiz. Owners and co-owners have access regardless of tier.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

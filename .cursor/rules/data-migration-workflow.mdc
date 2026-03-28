@@ -1,0 +1,19 @@
+---
+description: Models live here; apply migrations from CommunityBuilder.DataMigration
+alwaysApply: true
+---
+
+# CommunityBuilder.Models and DataMigration
+
+This repository (`CommunityBuilder.Models`) holds shared Django-style models under `app_models/` and per-app migration files under each app’s `migrations/` folder.
+
+**Applying or running database migrations is always done from the sibling project:**
+
+`C:\GIT\CommunityBuilder.DataMigration`
+
+That project is wired to this models package (dependency / path / packaging — however the solution is configured). Treat the two repos as one workflow:
+
+1. **Edit models and generate migration files** in `CommunityBuilder.Models` (e.g. `makemigrations` if you use it from a context that targets these apps).
+2. **Run `migrate` and any migration scripts or deployment steps** from `CommunityBuilder.DataMigration`, not from assuming this repo is the sole migration runner.
+
+When the user (or this assistant) adds or changes migration files here, remind them that execution belongs in `CommunityBuilder.DataMigration` unless they explicitly say otherwise. Do not assume migrations are applied from this repository’s root alone.

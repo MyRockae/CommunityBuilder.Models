@@ -181,59 +181,65 @@ class CommunityView(models.Model):
         viewer = self.user.email if self.user else 'anonymous'
         return f"{viewer} viewed {self.community.name} at {self.viewed_at}"
 
-class PaymentPlan(models.Model):
-    """Payment plan model for communities"""
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='payment_plans')
-    name = models.CharField(max_length=255, help_text='Name of the payment plan (e.g., "Standard", "Premium", "Enterprise")')
-    description = models.TextField(blank=True, null=True, help_text='Description of what this plan offers')
-    fee = models.DecimalField(max_digits=10, decimal_places=2, help_text='Subscription fee for this plan')
-    is_recurring = models.BooleanField(default=False, help_text='Whether this payment plan is recurring (subscription-based)')
-    is_free = models.BooleanField(default=False, help_text='Whether this plan is free. If True, fee will be automatically set to 0 and is_recurring will be False.')
-    offerings = models.JSONField(default=dict, blank=True, help_text='JSON field to store plan offerings/features')
-    is_active = models.BooleanField(default=True, help_text='Whether this plan is currently active and available')
+class CommunityGroup(models.Model):
+    """
+    Paid or free access tier for a community (formerly PaymentPlan).
+    Defines whether members pay, recurring vs one-time, and pricing.
+    """
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='community_groups')
+    name = models.CharField(max_length=255, help_text='Name of the group tier (e.g., "Standard", "Premium", "Enterprise")')
+    description = models.TextField(blank=True, null=True, help_text='Description of what this tier offers')
+    fee = models.DecimalField(max_digits=10, decimal_places=2, help_text='Subscription fee for this tier')
+    is_recurring = models.BooleanField(default=False, help_text='Whether this tier is recurring (subscription-based)')
+    is_free = models.BooleanField(default=False, help_text='Whether this tier is free. If True, fee will be automatically set to 0 and is_recurring will be False.')
+    offerings = models.JSONField(default=dict, blank=True, help_text='JSON field to store tier offerings/features')
+    is_active = models.BooleanField(default=True, help_text='Whether this tier is currently active and available')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class Meta:
-        db_table = 'PaymentPlan'
-        verbose_name = 'Payment Plan'
-        verbose_name_plural = 'Payment Plans'
+        db_table = 'CommunityGroup'
+        verbose_name = 'Community Group'
+        verbose_name_plural = 'Community Groups'
         unique_together = ['community', 'name']
         ordering = ['created_at']
-    
+
     def clean(self):
         """Validate that is_free=True sets fee=0 and is_recurring=False"""
         from django.core.exceptions import ValidationError
         if self.is_free:
             self.fee = 0
             self.is_recurring = False
-    
+
     def save(self, *args, **kwargs):
-        """Override save to ensure is_free logic is applied"""
         self.clean()
         super().save(*args, **kwargs)
-    
+
     def __str__(self):
         return f"{self.name} - {self.community.name}"
 
-class UserPaymentPlan(models.Model):
-    """Model to track which payment plan a user is subscribed to"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='user_payment_plans')
-    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='user_subscriptions')
-    payment_plan = models.ForeignKey(PaymentPlan, on_delete=models.CASCADE, related_name='subscribers')
+
+class CommunityGroupAccess(models.Model):
+    """
+    Which user has access to which community tier (formerly UserPaymentPlan).
+    For paid communities, billing truth is CommunityMemberSubscription; keep dates in sync via API.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='community_group_accesses')
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='community_group_access_entries')
+    community_group = models.ForeignKey(CommunityGroup, on_delete=models.CASCADE, related_name='access_assignments')
     subscribed_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField(null=True, blank=True, help_text='When the subscription expires (null for lifetime)')
-    is_active = models.BooleanField(default=True, help_text='Whether this subscription is currently active')
-    
+    expires_at = models.DateTimeField(null=True, blank=True, help_text='When access expires (null for lifetime)')
+    is_active = models.BooleanField(default=True, help_text='Whether this access is currently active')
+
     class Meta:
-        db_table = 'UserPaymentPlan'
-        verbose_name = 'User Payment Plan'
-        verbose_name_plural = 'User Payment Plans'
+        db_table = 'CommunityGroupAccess'
+        verbose_name = 'Community Group Access'
+        verbose_name_plural = 'Community Group Access'
         unique_together = ['user', 'community']
         ordering = ['-subscribed_at']
-    
+
     def __str__(self):
-        return f"{self.user.email} - {self.payment_plan.name} ({self.community.name})"
+        return f"{self.user.email} - {self.community_group.name} ({self.community.name})"
 
 class CommunityBadgeDefinition(models.Model):
     """
@@ -306,15 +312,15 @@ class CommunityMemberBadge(models.Model):
 
 # Signal to create default "hobby plan" when a community is created
 @receiver(post_save, sender=Community)
-def create_default_payment_plan(sender, instance, created, **kwargs):
-    """Create a default 'hobby plan' payment plan when a community is created"""
+def create_default_community_group(sender, instance, created, **kwargs):
+    """Create a default free 'hobby plan' tier when a community is created"""
     if created:
-        PaymentPlan.objects.create(
+        CommunityGroup.objects.create(
             community=instance,
             name='hobby plan',
-            description='Default free plan for the community',
+            description='Default free tier for the community',
             fee=0,
             is_recurring=False,
             is_free=True,
-            is_active=True
+            is_active=True,
         )
