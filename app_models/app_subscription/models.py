@@ -211,10 +211,16 @@ class CommunityMemberSubscription(models.Model):
 
 
 class PaymentTransaction(models.Model):
-    """Model to track payment transactions for both app and community member subscriptions"""
+    """Ledger row per Stripe charge: app subscription, community membership, or store product sale.
+
+    For community-linked payments, use platform_fee / owner_amount and transferred_to_owner /
+    stripe_transfer_id the same way: collect on the platform account, then pay the community
+    owner on your schedule (e.g. weekly batch).
+    """
     TRANSACTION_TYPE_CHOICES = [
         ('app_subscription', 'App Subscription'),
         ('community_member_subscription', 'Community Member Subscription'),
+        ('store_purchase', 'Store Product Purchase'),
     ]
     
     STATUS_CHOICES = [
@@ -224,15 +230,23 @@ class PaymentTransaction(models.Model):
         ('refunded', 'Refunded'),
     ]
     
-    # Transaction type and related subscription
+    # Transaction type and related record (exactly one should be set for a given charge)
     transaction_type = models.CharField(max_length=50, choices=TRANSACTION_TYPE_CHOICES, help_text='Type of transaction')
     app_subscription = models.ForeignKey(AppSubscription, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True, help_text='App subscription (if transaction_type is app_subscription)')
     community_member_subscription = models.ForeignKey(CommunityMemberSubscription, on_delete=models.CASCADE, related_name='transactions', null=True, blank=True, help_text='Community member subscription (if transaction_type is community_member_subscription)')
+    store_purchase = models.ForeignKey(
+        'community_store.StorePurchase',
+        on_delete=models.CASCADE,
+        related_name='payment_transactions',
+        null=True,
+        blank=True,
+        help_text='Store product purchase (if transaction_type is store_purchase)',
+    )
     
     # Payment amounts
-    total_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text='Total payment amount (100% of fee)')
-    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Platform fee (2% for community subscriptions, 0 for app subscriptions)')
-    owner_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Amount to owner (98% for community subscriptions, 0 for app subscriptions)')
+    total_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text='Total payment amount charged to the buyer')
+    platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Platform cut (e.g. 2% for community subscriptions and store sales; 0 for app subscriptions)')
+    owner_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Amount owed to the community owner after platform_fee (e.g. 98% for member subs and store sales)')
     
     currency = models.CharField(max_length=3, default='USD', help_text='Currency code (USD, EUR, etc.)')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', help_text='Payment status')
@@ -241,10 +255,10 @@ class PaymentTransaction(models.Model):
     stripe_payment_intent_id = models.CharField(max_length=255, unique=True, help_text='Stripe payment intent ID')
     stripe_charge_id = models.CharField(max_length=255, null=True, blank=True, help_text='Stripe charge ID')
     
-    # Transfer tracking (for community member subscriptions - manual transfer to owner)
-    transferred_to_owner = models.BooleanField(default=False, help_text='Whether the owner amount has been transferred to the community owner')
+    # Transfer tracking (community member subscriptions and store purchases — batch e.g. weekly)
+    transferred_to_owner = models.BooleanField(default=False, help_text='Whether owner_amount has been paid out to the community owner')
     transferred_at = models.DateTimeField(null=True, blank=True, help_text='When the transfer to owner was completed')
-    stripe_transfer_id = models.CharField(max_length=255, null=True, blank=True, help_text='Stripe transfer ID (if using Stripe Connect)')
+    stripe_transfer_id = models.CharField(max_length=255, null=True, blank=True, help_text='Stripe Transfer id (Connect) or payout reference for owner_amount')
     
     created_at = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True, help_text='When the payment was completed')
@@ -257,6 +271,7 @@ class PaymentTransaction(models.Model):
         indexes = [
             models.Index(fields=['app_subscription', 'status']),
             models.Index(fields=['community_member_subscription', 'status']),
+            models.Index(fields=['store_purchase', 'status']),
             models.Index(fields=['stripe_payment_intent_id']),
             models.Index(fields=['transferred_to_owner']),
         ]
@@ -264,6 +279,8 @@ class PaymentTransaction(models.Model):
     def __str__(self):
         if self.app_subscription:
             return f"App Subscription - ${self.total_amount} - {self.status}"
-        elif self.community_member_subscription:
+        if self.community_member_subscription:
             return f"{self.community_member_subscription.user.email} - ${self.total_amount} - {self.status}"
+        if self.store_purchase:
+            return f"Store {self.store_purchase.buyer_email} - ${self.total_amount} - {self.status}"
         return f"Transaction - ${self.total_amount} - {self.status}"
