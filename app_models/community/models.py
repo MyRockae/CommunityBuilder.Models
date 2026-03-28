@@ -235,7 +235,7 @@ class CommunityGroupAccess(models.Model):
         db_table = 'CommunityGroupAccess'
         verbose_name = 'Community Group Access'
         verbose_name_plural = 'Community Group Access'
-        unique_together = ['user', 'community']
+        unique_together = ['user', 'community', 'community_group']
         ordering = ['-subscribed_at']
 
     def __str__(self):

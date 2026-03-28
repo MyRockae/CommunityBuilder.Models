@@ -152,7 +152,7 @@ class StorageUsage(models.Model):
 
 
 class CommunityMemberSubscription(models.Model):
-    """Billing source of truth for a member’s paid community tier (member → owner, with 2% platform fee)."""
+    """Billing record per member/community/tier (member → owner, with 2% platform fee). Multiple rows per member per community are allowed when they pay for different community_groups."""
     STATUS_CHOICES = [
         ('pending', 'Pending Payment'),
         ('active', 'Active'),
@@ -184,7 +184,7 @@ class CommunityMemberSubscription(models.Model):
         db_table = 'CommunityMemberSubscription'
         verbose_name = 'Community Member Subscription'
         verbose_name_plural = 'Community Member Subscriptions'
-        unique_together = ['user', 'community']  # One subscription per user per community
+        unique_together = ['user', 'community', 'community_group']
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['user', 'community', 'status']),
