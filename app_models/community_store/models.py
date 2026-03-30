@@ -7,6 +7,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from app_models.account.models import User
+from app_models.app_subscription.models import PaymentGateway
 from app_models.community.models import Community
 
 
@@ -185,6 +186,28 @@ class StorePurchase(models.Model):
         blank=True,
         help_text='Stripe Customer id for the buyer (optional; useful for logged-in or returning buyers)',
     )
+    # Buyer billing snapshot & Paystack (parallel to Stripe checkout fields above)
+    billing_country = models.CharField(
+        max_length=2,
+        blank=True,
+        null=True,
+        help_text='ISO 3166-1 alpha-2 country for this checkout',
+    )
+    payment_gateway = models.CharField(
+        max_length=20,
+        choices=PaymentGateway.choices,
+        blank=True,
+        null=True,
+        help_text='Payment processor handling this purchase',
+    )
+    paystack_customer_code = models.CharField(max_length=255, blank=True, null=True)
+    paystack_subscription_code = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Set when purchase uses a Paystack subscription; usually null for one-off store sales',
+    )
+    paystack_transaction_reference = models.CharField(max_length=255, blank=True, null=True)
     purchased_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -203,6 +226,8 @@ class StorePurchase(models.Model):
             models.Index(fields=['status']),
             models.Index(fields=['stripe_payment_intent_id']),
             models.Index(fields=['stripe_checkout_session_id']),
+            models.Index(fields=['paystack_transaction_reference']),
+            models.Index(fields=['payment_gateway']),
         ]
         constraints = [
             models.UniqueConstraint(
