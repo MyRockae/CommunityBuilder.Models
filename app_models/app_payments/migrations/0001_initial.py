@@ -44,7 +44,7 @@ class Migration(migrations.Migration):
                             models.Index(fields=['user', 'payment_gateway', 'status'], name='CreatorPayo_user_id_cd8639_idx'),
                             models.Index(fields=['user', 'is_primary'], name='CreatorPayo_user_id_a79758_idx'),
                             models.Index(fields=['stripe_connect_account_id'], name='CreatorPayo_stripe__1fe35b_idx'),
-                            models.Index(fields=['paystack_subaccount_code'], name='CreatorPayo_paystac_3d6ee9_idx'),
+                            models.Index(fields=['paystack_subaccount_code'], name='CreatorPayo_paystac_90f293_idx'),
                         ],
                         'constraints': [
                             models.UniqueConstraint(
@@ -91,7 +91,7 @@ class Migration(migrations.Migration):
                             models.Index(fields=['community_member_subscription', 'status'], name='PaymentTran_communi_914bd6_idx'),
                             models.Index(fields=['store_purchase', 'status'], name='PaymentTran_store_p_60c6da_idx'),
                             models.Index(fields=['stripe_payment_intent_id'], name='PaymentTran_stripe__805ae8_idx'),
-                            models.Index(fields=['payment_gateway'], name='PaymentTran_gateway_idx'),
+                            models.Index(fields=['payment_gateway'], name='PaymentTran_payment_93971b_idx'),
                             models.Index(fields=['transferred_to_owner'], name='PaymentTran_transfe_353555_idx'),
                         ],
                     },
