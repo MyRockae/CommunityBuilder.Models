@@ -32,11 +32,17 @@ Shared Django models package for the CommunityBuilder platform. Use this repo as
 | `community_leave_reason` | CommunityLeaveReason |
 | `community_abuse_report` | CommunityAbuseReport (user reports/flagging of communities) |
 | `badges` | BadgeDefinition, UserBadge (app-level badges) |
-| `app_subscription` | AppSubscriptionTier, AppSubscription, StorageUsage, CommunityMemberSubscription, PaymentTransaction |
+| `app_payments` | `PaymentGateway`, `PaymentTransaction`, `CreatorPayoutAccount` |
+| `app_subscription` | `AppSubscriptionTier`, `AppSubscriptionTierPrice`, `AppSubscription`, `CommunityMemberSubscription` |
+| `storage_usage` | `StorageUsage` (per-owner file bytes for tier limits) |
 
 ## Installation
 
 Install the package (e.g. from Git), then add every `app_models.*` app you use to your project’s `INSTALLED_APPS`. See [INSTALL.md](INSTALL.md) for Git install and usage examples.
+
+**Order:** declare **`app_models.app_payments` before `app_models.app_subscription`** (subscription models import `PaymentGateway` from `app_payments`). Include **`app_models.storage_usage`** if you use `StorageUsage`.
+
+**Imports (after the split):** `PaymentTransaction`, `CreatorPayoutAccount`, and `PaymentGateway` → `app_models.app_payments.models`. `StorageUsage` → `app_models.storage_usage.models`.
 
 ## Usage
 

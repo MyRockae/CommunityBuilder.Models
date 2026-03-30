@@ -7,7 +7,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from app_models.account.models import User
-from app_models.app_subscription.models import PaymentGateway
+from app_models.app_payments.models import PaymentGateway
 from app_models.community.models import Community
 
 
