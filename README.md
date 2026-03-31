@@ -15,7 +15,7 @@ Shared Django models package for the CommunityBuilder platform. Use this repo as
 | `account` | User, UserRole (custom auth; email as username) |
 | `user_profile` | UserProfile (name, bio, interests, avatar, etc.) |
 | `shared` | Tag, custom API exceptions |
-| `community` | Community, CommunityMember, CommunityLike, CommunityView, CommunityGroup, CommunityGroupAccess, CommunityBadgeDefinition, CommunityMemberBadge |
+| `community` | Community, CommunityMember, CommunityLike, CommunityView, CommunityGroup, **CommunityGroupPrice**, CommunityGroupAccess, CommunityBadgeDefinition, CommunityMemberBadge |
 | `community_classroom` | Classroom (courses; payment plans, is_published, certificates) |
 | `community_classroom_content` | ClassroomContent, ClassroomAttachment, ClassroomContentCompletion, ClassroomCertificate |
 | `community_forum` | Forum, Post, PostAttachment, PostLike |
@@ -80,3 +80,7 @@ WHERE NOT EXISTS (
 ```
 
 Skip any row for an app/migration you have not actually applied yet (schema mismatch). If the database was **not** fully migrated through `0011`, roll back with a restore or reverse the schema manually instead of inserting rows.
+
+### Community group per-currency pricing (`community.0014`–`community.0016`)
+
+`CommunityGroupPrice` links a `CommunityGroup` to an ISO currency + amount (same pattern as `AppSubscriptionTierPrice`). Migration **0014** seeds one **USD** row from the legacy `fee` column for each group that was not marked free (upgrade path). Migration **0015** removes the `fee` column. Migration **0016** removes `CommunityGroup.is_free`; a tier is **free** when it has no `CommunityGroupPrice` row with `amount > 0` (APIs can expose that derived flag). Community owners (or your admin tools) should add price rows per currency for paid tiers; payment APIs resolve amount/currency from billing country + gateway like app subscriptions.

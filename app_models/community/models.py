@@ -183,15 +183,14 @@ class CommunityView(models.Model):
 
 class CommunityGroup(models.Model):
     """
-    Paid or free access tier for a community (formerly PaymentPlan).
-    Defines whether members pay, recurring vs one-time, and pricing.
+    Access tier for a community (formerly PaymentPlan).
+    Whether the tier is free or paid is determined by CommunityGroupPrice rows: a tier is free when it has
+    no price row with amount > 0 (or no rows at all). Gateway-specific amounts live on CommunityGroupPrice.
     """
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='community_groups')
     name = models.CharField(max_length=255, help_text='Name of the group tier (e.g., "Standard", "Premium", "Enterprise")')
     description = models.TextField(blank=True, null=True, help_text='Description of what this tier offers')
-    fee = models.DecimalField(max_digits=10, decimal_places=2, help_text='Subscription fee for this tier')
     is_recurring = models.BooleanField(default=False, help_text='Whether this tier is recurring (subscription-based)')
-    is_free = models.BooleanField(default=False, help_text='Whether this tier is free. If True, fee will be automatically set to 0 and is_recurring will be False.')
     offerings = models.JSONField(default=dict, blank=True, help_text='JSON field to store tier offerings/features')
     is_active = models.BooleanField(default=True, help_text='Whether this tier is currently active and available')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -204,19 +203,47 @@ class CommunityGroup(models.Model):
         unique_together = ['community', 'name']
         ordering = ['created_at']
 
-    def clean(self):
-        """Validate that is_free=True sets fee=0 and is_recurring=False"""
-        from django.core.exceptions import ValidationError
-        if self.is_free:
-            self.fee = 0
-            self.is_recurring = False
-
-    def save(self, *args, **kwargs):
-        self.clean()
-        super().save(*args, **kwargs)
-
     def __str__(self):
         return f"{self.name} - {self.community.name}"
+
+
+class CommunityGroupPrice(models.Model):
+    """
+    List price for a community group (paid tier) in one ISO 4217 currency.
+    Used for gateway-aware checkout (e.g. USD/Stripe vs NGN/Paystack), mirroring AppSubscriptionTierPrice.
+    """
+
+    community_group = models.ForeignKey(
+        CommunityGroup,
+        on_delete=models.CASCADE,
+        related_name='prices',
+        help_text='Community group tier this price applies to',
+    )
+    currency = models.CharField(
+        max_length=3,
+        help_text='ISO 4217 code (e.g. USD, NGN, GHS, ZAR)',
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text='Fee in major units of this currency',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CommunityGroupPrice'
+        verbose_name = 'Community group price'
+        verbose_name_plural = 'Community group prices'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['community_group', 'currency'],
+                name='commgroupprice_unique_group_currency',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.community_group_id} {self.currency} {self.amount}'
 
 
 class CommunityGroupAccess(models.Model):
@@ -319,8 +346,6 @@ def create_default_community_group(sender, instance, created, **kwargs):
             community=instance,
             name='hobby plan',
             description='Default free tier for the community',
-            fee=0,
             is_recurring=False,
-            is_free=True,
             is_active=True,
         )
