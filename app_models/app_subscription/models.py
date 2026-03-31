@@ -16,12 +16,6 @@ class AppSubscriptionTier(models.Model):
 
     tier_name = models.CharField(max_length=50, choices=TIER_CHOICES, unique=True, help_text='Tier identifier')
     display_name = models.CharField(max_length=255, help_text='Display name for the tier')
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        default=0,
-        help_text='Legacy monthly amount (kept in sync for admin UX); canonical per-currency amounts live on AppSubscriptionTierPrice',
-    )
 
     # Limits
     max_communities = models.IntegerField(null=True, blank=True, help_text='Maximum number of communities (null = unlimited)')
@@ -64,10 +58,10 @@ class AppSubscriptionTier(models.Model):
         db_table = 'AppSubscriptionTier'
         verbose_name = 'App Subscription Tier'
         verbose_name_plural = 'App Subscription Tiers'
-        ordering = ['price']
+        ordering = ['tier_name']
 
     def __str__(self):
-        return f"{self.display_name} (${self.price}/month)"
+        return f'{self.display_name} ({self.tier_name})'
 
 
 class AppSubscriptionTierPrice(models.Model):
