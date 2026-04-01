@@ -14,6 +14,7 @@ M2M_THROUGH_TABLES = (
     'MeetingSeries_payment_plans',
     'Forum_payment_plans',
     'Resource_payment_plans',
+    'Poll_payment_plans',
 )
 
 
