@@ -30,5 +30,8 @@ Then in your API code you can use:
 ```python
 from app_models.account.models import User
 from app_models.community.models import Community
+from app_models.community_telegram.models import CommunityTelegram
 # etc.
 ```
+
+Include **`app_models.community_telegram`** in `INSTALLED_APPS` when using Telegram integration (after `app_models.community`).

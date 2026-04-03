@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: CommunityBuilder.Models
+Version: 0.1.0
+Summary: Shared Django models for CommunityBuilder API
+Requires-Python: >=3.8
+Requires-Dist: Django>=4.0
+Requires-Dist: djangorestframework

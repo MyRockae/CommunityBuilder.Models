@@ -31,6 +31,7 @@ Shared Django models package for the CommunityBuilder platform. Use this repo as
 | `community_feedback` | CommunityFeedback (ratings + message per community) |
 | `community_leave_reason` | CommunityLeaveReason |
 | `community_abuse_report` | CommunityAbuseReport (user reports/flagging of communities) |
+| `community_telegram` | CommunityTelegram (per-community Telegram bot token, chat id, enabled flag) |
 | `badges` | BadgeDefinition, UserBadge (app-level badges) |
 | `app_payments` | `PaymentGateway`, `PaymentTransaction`, `CreatorPayoutAccount` |
 | `app_subscription` | `AppSubscriptionTier`, `AppSubscriptionTierPrice`, `AppSubscription`, `CommunityMemberSubscription` |
