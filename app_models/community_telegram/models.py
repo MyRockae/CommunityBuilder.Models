@@ -26,6 +26,18 @@ class CommunityTelegram(models.Model):
         help_text='Telegram chat id for the linked group or channel.',
     )
     is_enabled = models.BooleanField(default=False)
+    platform_link_code = models.CharField(
+        max_length=40,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text='Short-lived code; owner posts /link <code> in the group with the platform bot.',
+    )
+    platform_link_code_expires = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='When platform_link_code stops being valid.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
