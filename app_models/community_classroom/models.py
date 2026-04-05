@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from app_models.account.models import User
 from app_models.community.models import Community, CommunityGroup
 from app_models.shared.validators import slug_username_validator
@@ -32,6 +33,14 @@ class Classroom(models.Model):
         verbose_name_plural = 'Classrooms'
         unique_together = ['community', 'name']  # Each community can have unique classroom names
         ordering = ['-created_at']
-    
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if self.is_published and self.published_at is None:
+            self.published_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = list({*update_fields, 'published_at'})
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.name} - {self.community.name}"

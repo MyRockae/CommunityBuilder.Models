@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from app_models.community_classroom.models import Classroom
 from app_models.account.models import User
 
@@ -32,7 +33,15 @@ class ClassroomContent(models.Model):
         verbose_name = 'Classroom Content'
         verbose_name_plural = 'Classroom Contents'
         ordering = ['order', '-created_at']
-    
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if self.is_active and self.activated_at is None:
+            self.activated_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = list({*update_fields, 'activated_at'})
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"{self.title} - {self.classroom.name}"
 
