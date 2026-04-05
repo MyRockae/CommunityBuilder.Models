@@ -18,6 +18,11 @@ class ClassroomContent(models.Model):
         help_text='Source of the video, e.g. upload, youtube, vimeo, twitter (API-defined string)',
     )
     is_active = models.BooleanField(default=True, help_text='Whether this content is active and visible to members. Owners and moderators can see inactive content.')
+    activated_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Set once when the content is first activated; remains set if is_active is toggled off so downstream notifications fire only once.',
+    )
     order = models.IntegerField(default=0, help_text='Display order (lower numbers appear first). Used for drag-and-drop reordering by owners/moderators.')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

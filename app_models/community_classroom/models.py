@@ -18,6 +18,11 @@ class Classroom(models.Model):
     enforce_progression = models.BooleanField(default=False, help_text='If True, users must complete content in order (one at a time). Owners/moderators can view all content regardless.')
     issue_certificate = models.BooleanField(default=False, help_text='If True, users will receive a certificate when all content in the classroom is completed')
     is_published = models.BooleanField(default=False, help_text='If True, the classroom is visible/published to members')
+    published_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Set once when the classroom is first published; remains set if is_published is toggled off so downstream notifications fire only once.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
