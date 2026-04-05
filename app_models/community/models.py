@@ -362,6 +362,42 @@ class CommunityMemberBadge(models.Model):
         return f"{self.community_member.user.email} - {self.community_badge.code} ({self.community_member.community.name})"
 
 
+class CommunitySocialLink(models.Model):
+    """
+    External social or web links for a community (e.g. website, X, Discord).
+    `platform` is a short key for UI (icon/label); use values your frontend understands.
+    """
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='social_links',
+        help_text='Community this link belongs to',
+    )
+    platform = models.CharField(
+        max_length=64,
+        help_text='Platform key for display/icons (e.g. website, twitter, discord, linkedin)',
+    )
+    url = models.URLField(
+        max_length=2048,
+        help_text='Full URL for this link',
+    )
+    sort_order = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Lower values appear first when listing links',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CommunitySocialLink'
+        verbose_name = 'Community social link'
+        verbose_name_plural = 'Community social links'
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f'{self.community.name} — {self.platform}'
+
+
 # Signal to create default "hobby plan" when a community is created
 @receiver(post_save, sender=Community)
 def create_default_community_group(sender, instance, created, **kwargs):

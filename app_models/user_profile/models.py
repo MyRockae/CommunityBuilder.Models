@@ -41,6 +41,42 @@ class UserProfile(models.Model):
         verbose_name_plural = 'UserProfile'
 
 
+class UserProfileSocialLink(models.Model):
+    """
+    External social or web links for a user profile.
+    `platform` is a short key for UI (icon/label); use values your frontend understands.
+    """
+    user_profile = models.ForeignKey(
+        UserProfile,
+        on_delete=models.CASCADE,
+        related_name='social_links',
+        help_text='User profile this link belongs to',
+    )
+    platform = models.CharField(
+        max_length=64,
+        help_text='Platform key for display/icons (e.g. website, twitter, discord, linkedin)',
+    )
+    url = models.URLField(
+        max_length=2048,
+        help_text='Full URL for this link',
+    )
+    sort_order = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Lower values appear first when listing links',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'UserProfileSocialLink'
+        verbose_name = 'User profile social link'
+        verbose_name_plural = 'User profile social links'
+        ordering = ['sort_order', 'id']
+
+    def __str__(self):
+        return f'{self.user_profile_id} — {self.platform}'
+
+
 class UserAddress(models.Model):
     """
     Postal-style address lines for display. Use billing_country / billing_region for
