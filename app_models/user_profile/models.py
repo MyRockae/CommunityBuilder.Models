@@ -81,7 +81,6 @@ class UserAddress(models.Model):
     """
     Postal-style address lines for display. Use billing_country / billing_region for
     tax and payment-provider routing; state is reserved for other product use.
-    At most one row per user should have is_default_billing=True (PostgreSQL UniqueConstraint).
     """
     user = models.ForeignKey(
         User,
@@ -127,13 +126,10 @@ class UserAddress(models.Model):
         null=True,
         help_text='Optional app-specific use (not the same as billing_region unless you choose to mirror it)',
     )
-    is_billing_address = models.BooleanField(
-        default=False,
-        help_text='True if this address is used for billing/invoicing',
-    )
-    is_default_billing = models.BooleanField(
-        default=False,
-        help_text='True if this is the default billing address among billing rows',
+    address_type = models.CharField(
+        max_length=64,
+        default='residence',
+        help_text='Purpose of this address (e.g. billing, tax, residence); values are defined by your API/product',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -142,17 +138,9 @@ class UserAddress(models.Model):
         db_table = 'UserAddress'
         verbose_name = 'User address'
         verbose_name_plural = 'User addresses'
-        ordering = ['-is_default_billing', '-updated_at']
+        ordering = ['address_type', '-updated_at']
         indexes = [
-            models.Index(fields=['user', 'is_billing_address']),
-            models.Index(fields=['user', 'is_default_billing']),
-        ]
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user'],
-                condition=models.Q(is_default_billing=True),
-                name='useraddress_unique_default_billing_per_user',
-            ),
+            models.Index(fields=['user', 'address_type'], name='UserAddress_user_id_type_idx'),
         ]
 
     def __str__(self):

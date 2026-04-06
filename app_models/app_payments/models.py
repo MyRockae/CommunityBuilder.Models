@@ -99,6 +99,35 @@ class CreatorPayoutAccount(models.Model):
         return f'{self.user.email} — {self.payment_gateway} ({self.status})'
 
 
+class PayoutProfile(models.Model):
+    """Per-user payout preferences (one row per user)."""
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='payout_profile',
+        help_text='User this payout profile belongs to',
+    )
+    preferred_payment_gateway = models.CharField(
+        max_length=20,
+        choices=PaymentGateway.choices,
+        blank=True,
+        null=True,
+        help_text='Preferred processor for payouts when the user has multiple options',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'PayoutProfile'
+        verbose_name = 'Payout profile'
+        verbose_name_plural = 'Payout profiles'
+
+    def __str__(self):
+        gw = self.preferred_payment_gateway or '—'
+        return f'{self.user.email} — preferred: {gw}'
+
+
 class PaymentTransaction(models.Model):
     """Ledger row per charge (Stripe or Paystack): app subscription, community membership, or store sale.
 
