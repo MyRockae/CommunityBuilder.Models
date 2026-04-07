@@ -122,16 +122,16 @@ class PayoutProfile(models.Model):
         help_text='Legal name as shown on tax or bank documents',
     )
     tax_id = models.CharField(
-        max_length=64,
+        max_length=255,
         blank=True,
         null=True,
-        help_text='Tax identifier (e.g. EIN, VAT, SSN format varies by jurisdiction)',
+        help_text='Hashed tax identifier (e.g. EIN, VAT); never store plaintext',
     )
     identity_document_number = models.CharField(
-        max_length=64,
+        max_length=255,
         blank=True,
         null=True,
-        help_text='Government-issued ID number (national ID, passport, etc.) for KYC / payout verification',
+        help_text='Hashed government ID number for KYC; never store plaintext',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
