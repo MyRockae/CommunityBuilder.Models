@@ -62,6 +62,7 @@ Run migrations from your Django project so the database schema stays in sync wit
 
 Apply migrations with a **full** `python manage.py migrate`, not `migrate community` alone. If `community.0011` is recorded while follow-up migrations are not, Django can fail on startup with *lazy reference to `community.paymentplan`* because `PaymentPlan` no longer exists in migration state.
 
+
 **Recovery (PostgreSQL):** if the DB already matches the renamed schema (tables/columns from `0011` and the M2M state-only migrations) but `django_migrations` is missing rows, insert the missing names so state matches reality, then run `migrate` again:
 
 ```sql
