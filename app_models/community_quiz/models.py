@@ -6,12 +6,12 @@ from app_models.account.models import User
 class SimpleQuiz(models.Model):
     """
     Simple Quiz (MCQ) for a community — tier access via payment_plans.
-    DB table remains ``Quiz`` for compatibility with existing data and QuizGenerationService.
+    Physical table: ``SimpleQuiz``.
     """
     community = models.ForeignKey(
         Community,
         on_delete=models.CASCADE,
-        related_name='quizzes',
+        related_name='simple_quizzes',
         help_text='Community this quiz belongs to',
     )
     title = models.CharField(max_length=255, help_text='Title of the quiz')
@@ -22,7 +22,7 @@ class SimpleQuiz(models.Model):
     max_attempts = models.PositiveIntegerField(null=True, blank=True, help_text='Maximum number of attempts allowed if has_attempt_limit is True')
     payment_plans = models.ManyToManyField(
         CommunityGroup,
-        related_name='quizzes',
+        related_name='simple_quizzes',
         blank=True,
         help_text='Community groups (tiers) that have access to this quiz. Owners and co-owners have access regardless of tier.',
     )
@@ -30,7 +30,7 @@ class SimpleQuiz(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'Quiz'
+        db_table = 'SimpleQuiz'
         verbose_name = 'Simple Quiz'
         verbose_name_plural = 'Simple Quizzes'
         ordering = ['-created_at']
@@ -49,7 +49,8 @@ class SimpleQuiz(models.Model):
 
 class SimpleQuizGenerationJob(models.Model):
     """
-    AI job row for generating a Simple Quiz. Table ``QuizGenerationJob``.
+    AI job row for generating a Simple Quiz. Shared queue table ``QuizGenerationJob``
+    (future Custom Quiz jobs may use the same table with a discriminator or a separate model).
     """
     job_id = models.CharField(max_length=36, unique=True, help_text='Unique job identifier (GUID/UUID)')
     meta_data = models.TextField(
@@ -83,7 +84,7 @@ class SimpleQuizGenerationJob(models.Model):
 
 class SimpleQuizSubmission(models.Model):
     """
-    Attempt/results for a Simple Quiz. Table ``QuizSubmission``.
+    Attempt/results for a Simple Quiz. Physical table: ``SimpleQuizSubmission``.
     ``quiz`` may be null after the quiz definition is deleted; ``community`` and snapshots retain history.
     """
     quiz = models.ForeignKey(
@@ -111,7 +112,12 @@ class SimpleQuizSubmission(models.Model):
         blank=True,
         help_text='Quiz primary key at submission time (for reference after delete)',
     )
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_submissions', help_text='User who submitted the quiz')
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='simple_quiz_submissions',
+        help_text='User who submitted the quiz',
+    )
     submission_data = models.TextField(help_text='JSON string containing submission data with questions answered, correct/incorrect answers')
     score = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, help_text='Score achieved (percentage)')
     total_questions = models.IntegerField(help_text='Total number of questions in the quiz')
@@ -121,7 +127,7 @@ class SimpleQuizSubmission(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'QuizSubmission'
+        db_table = 'SimpleQuizSubmission'
         verbose_name = 'Simple Quiz Submission'
         verbose_name_plural = 'Simple Quiz Submissions'
         ordering = ['-created_at']
@@ -129,9 +135,3 @@ class SimpleQuizSubmission(models.Model):
     def __str__(self):
         title = self.quiz_title_snapshot or (self.quiz.title if self.quiz else 'Deleted quiz')
         return f"{self.user.email} - {title} - {self.created_at}"
-
-
-# Backward-compatible names (same tables / relations)
-Quiz = SimpleQuiz
-QuizGenerationJob = SimpleQuizGenerationJob
-QuizSubmission = SimpleQuizSubmission
