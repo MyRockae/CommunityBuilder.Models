@@ -193,6 +193,7 @@ class CommunityGroup(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='community_groups')
     name = models.CharField(max_length=255, help_text='Name of the group tier (e.g., "Standard", "Premium", "Enterprise")')
     description = models.TextField(blank=True, null=True, help_text='Description of what this tier offers')
+    avatar_url = models.URLField(blank=True, null=True)
     is_monthly = models.BooleanField(
         default=False,
         help_text='Member is charged each billing month (recurring; payment service must enforce)',
