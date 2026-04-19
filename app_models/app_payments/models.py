@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 
 from app_models.account.models import User
 
@@ -144,6 +145,128 @@ class PayoutProfile(models.Model):
     def __str__(self):
         gw = self.preferred_payment_gateway or '—'
         return f'{self.user.email} — preferred: {gw}'
+
+
+class PaymentCheckoutSession(models.Model):
+    """
+    Short-lived browser/mobile checkout handoff (opaque URL token → exchange for payment UI data).
+
+    Same subject axes as PaymentTransaction: app subscription, community member (tier) subscription,
+    or store purchase. Raw token is never stored — only token_hash (e.g. SHA-256 hex of secret token).
+    """
+
+    SESSION_KIND_CHOICES = [
+        ('app_subscription', 'App Subscription'),
+        ('community_member_subscription', 'Community Member Subscription'),
+        ('store_purchase', 'Store Product Purchase'),
+    ]
+
+    STATUS_PENDING = 'pending'
+    STATUS_COMPLETED = 'completed'
+    STATUS_EXPIRED = 'expired'
+    STATUS_REVOKED = 'revoked'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_COMPLETED, 'Completed'),
+        (STATUS_EXPIRED, 'Expired'),
+        (STATUS_REVOKED, 'Revoked'),
+        (STATUS_FAILED, 'Failed'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='payment_checkout_sessions',
+        help_text='Buyer who may redeem this session (must match authenticated user on exchange)',
+    )
+    session_kind = models.CharField(
+        max_length=50,
+        choices=SESSION_KIND_CHOICES,
+        help_text='Which subject FK is populated — same vocabulary as PaymentTransaction.transaction_type',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        help_text='Lifecycle: pending until completed, expired, revoked, or failed',
+    )
+
+    token_hash = models.CharField(
+        max_length=64,
+        unique=True,
+        help_text='Hex digest of opaque checkout token (raw token only sent once in URL)',
+    )
+
+    app_subscription = models.ForeignKey(
+        'app_subscription.AppSubscription',
+        on_delete=models.CASCADE,
+        related_name='payment_checkout_sessions',
+        null=True,
+        blank=True,
+        help_text='Set when session_kind is app_subscription',
+    )
+    community_member_subscription = models.ForeignKey(
+        'app_subscription.CommunityMemberSubscription',
+        on_delete=models.CASCADE,
+        related_name='payment_checkout_sessions',
+        null=True,
+        blank=True,
+        help_text='Set when session_kind is community_member_subscription',
+    )
+    store_purchase = models.ForeignKey(
+        'community_store.StorePurchase',
+        on_delete=models.CASCADE,
+        related_name='payment_checkout_sessions',
+        null=True,
+        blank=True,
+        help_text='Set when session_kind is store_purchase',
+    )
+
+    payment_gateway = models.CharField(
+        max_length=20,
+        choices=PaymentGateway.choices,
+        blank=True,
+        null=True,
+        help_text='Processor for this checkout (stripe / paystack)',
+    )
+
+    metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Optional type-specific context (return URLs, display hints, etc.); do not store client_secret here',
+    )
+
+    expires_at = models.DateTimeField(help_text='When this session stops accepting exchange')
+    used_at = models.DateTimeField(null=True, blank=True, help_text='When checkout handoff was consumed or payment completed')
+    revoked_at = models.DateTimeField(null=True, blank=True, help_text='When user or system cancelled before completion')
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'PaymentCheckoutSession'
+        verbose_name = 'Payment checkout session'
+        verbose_name_plural = 'Payment checkout sessions'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'status', 'expires_at']),
+            models.Index(fields=['status', 'expires_at']),
+            models.Index(fields=['session_kind', 'status']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    Q(app_subscription__isnull=False, community_member_subscription__isnull=True, store_purchase__isnull=True)
+                    | Q(app_subscription__isnull=True, community_member_subscription__isnull=False, store_purchase__isnull=True)
+                    | Q(app_subscription__isnull=True, community_member_subscription__isnull=True, store_purchase__isnull=False)
+                ),
+                name='paymentcheckoutsession_exactly_one_subject',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.session_kind} — {self.user_id} — {self.status} ({self.token_hash[:12]}…)'
 
 
 class PaymentTransaction(models.Model):
