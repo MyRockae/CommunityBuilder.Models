@@ -60,6 +60,40 @@ class Community(models.Model):
         verbose_name_plural = 'Communities'
         ordering = ['-created_at']
 
+
+class CommunitySettings(models.Model):
+    """
+    Community-scoped configuration (one row per community). Prefer new JSON domains here
+    over widening the Community row.
+    """
+
+    community = models.OneToOneField(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='settings',
+        help_text='Community these settings belong to',
+    )
+    owner_notification_preferences = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Owner/co-owner notification opt-ins by event type. Keys are stable event ids '
+            '(e.g. feedback, public_feed_reply, blog_reply, quiz_submission); values are typically '
+            'boolean. Omitted keys are treated as off (opt-in).'
+        ),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CommunitySettings'
+        verbose_name = 'Community settings'
+        verbose_name_plural = 'Community settings'
+
+    def __str__(self):
+        return f'Settings for {self.community.name}'
+
+
 class CommunityMember(models.Model):
     ROLE_CHOICES = [
         ('owner', 'Owner'),
@@ -413,3 +447,10 @@ def create_default_community_group(sender, instance, created, **kwargs):
             is_lifetime=True,
             is_active=True,
         )
+
+
+@receiver(post_save, sender=Community)
+def create_default_community_settings(sender, instance, created, **kwargs):
+    """Create an empty CommunitySettings row when a community is created."""
+    if created:
+        CommunitySettings.objects.get_or_create(community=instance)
