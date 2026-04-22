@@ -1,7 +1,21 @@
+import django
 from django.db import models
 from django.db.models import Q
 
 from app_models.account.models import User
+
+
+def _payment_checkout_session_subject_check_constraint():
+    """Django < 5.2 uses CheckConstraint(check=...); 5.2+ prefers condition= (required in Django 6+)."""
+    q = (
+        Q(app_subscription__isnull=False, community_member_subscription__isnull=True, store_purchase__isnull=True)
+        | Q(app_subscription__isnull=True, community_member_subscription__isnull=False, store_purchase__isnull=True)
+        | Q(app_subscription__isnull=True, community_member_subscription__isnull=True, store_purchase__isnull=False)
+    )
+    name = 'paymentcheckoutsession_exactly_one_subject'
+    if django.VERSION >= (5, 2):
+        return models.CheckConstraint(condition=q, name=name)
+    return models.CheckConstraint(check=q, name=name)
 
 
 class PaymentGateway(models.TextChoices):
@@ -255,14 +269,7 @@ class PaymentCheckoutSession(models.Model):
             models.Index(fields=['session_kind', 'status']),
         ]
         constraints = [
-            models.CheckConstraint(
-                condition=(
-                    Q(app_subscription__isnull=False, community_member_subscription__isnull=True, store_purchase__isnull=True)
-                    | Q(app_subscription__isnull=True, community_member_subscription__isnull=False, store_purchase__isnull=True)
-                    | Q(app_subscription__isnull=True, community_member_subscription__isnull=True, store_purchase__isnull=False)
-                ),
-                name='paymentcheckoutsession_exactly_one_subject',
-            ),
+            _payment_checkout_session_subject_check_constraint(),
         ]
 
     def __str__(self):

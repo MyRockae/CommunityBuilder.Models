@@ -1,7 +1,20 @@
+import django
 import django.db.models.deletion
 from django.conf import settings
 from django.db import migrations, models
 from django.db.models import Q
+
+
+def _payment_checkoutsession_subject_check_constraint():
+    q = (
+        Q(app_subscription__isnull=False, community_member_subscription__isnull=True, store_purchase__isnull=True)
+        | Q(app_subscription__isnull=True, community_member_subscription__isnull=False, store_purchase__isnull=True)
+        | Q(app_subscription__isnull=True, community_member_subscription__isnull=True, store_purchase__isnull=False)
+    )
+    name = 'paymentcheckoutsession_exactly_one_subject'
+    if django.VERSION >= (5, 2):
+        return models.CheckConstraint(condition=q, name=name)
+    return models.CheckConstraint(check=q, name=name)
 
 
 class Migration(migrations.Migration):
@@ -140,13 +153,6 @@ class Migration(migrations.Migration):
         ),
         migrations.AddConstraint(
             model_name='paymentcheckoutsession',
-            constraint=models.CheckConstraint(
-                condition=(
-                    Q(app_subscription__isnull=False, community_member_subscription__isnull=True, store_purchase__isnull=True)
-                    | Q(app_subscription__isnull=True, community_member_subscription__isnull=False, store_purchase__isnull=True)
-                    | Q(app_subscription__isnull=True, community_member_subscription__isnull=True, store_purchase__isnull=False)
-                ),
-                name='paymentcheckoutsession_exactly_one_subject',
-            ),
+            constraint=_payment_checkoutsession_subject_check_constraint(),
         ),
     ]
