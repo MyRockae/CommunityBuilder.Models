@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils import timezone
 from app_models.account.models import User
@@ -100,6 +103,86 @@ class AppSubscriptionTierPrice(models.Model):
         return f'{self.tier.tier_name} {self.currency} {self.amount}'
 
 
+class AppTierDiscountCode(models.Model):
+    """Percentage discount for app subscription tier checkout (Payment service validates and charges)."""
+
+    code = models.CharField(
+        max_length=64,
+        unique=True,
+        db_index=True,
+        help_text='Public code (match case-insensitively in application code)',
+    )
+    discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('100'))],
+        help_text='0–100: percent off list tier price (100 = free checkout)',
+    )
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When set, code is invalid at or after this instant (timezone-aware)',
+    )
+    max_redemptions = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='When set, code cannot be redeemed more than this many times (successful payments only)',
+    )
+    redeemed_count = models.PositiveIntegerField(
+        default=0,
+        help_text='Number of successful redemptions (incremented by payment service)',
+    )
+    tier = models.ForeignKey(
+        AppSubscriptionTier,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='discount_codes',
+        help_text='When set, code only applies to this tier',
+    )
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'AppTierDiscountCode'
+        verbose_name = 'App tier discount code'
+        verbose_name_plural = 'App tier discount codes'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.code} ({self.discount_percent}%)'
+
+
+class AppTierDiscountCodeAllowedEmail(models.Model):
+    """Optional allowlist: when a code has any rows, only these emails may redeem it."""
+
+    discount_code = models.ForeignKey(
+        AppTierDiscountCode,
+        on_delete=models.CASCADE,
+        related_name='allowed_emails',
+    )
+    email_normalized = models.CharField(
+        max_length=254,
+        db_index=True,
+        help_text='Lowercased, trimmed email',
+    )
+
+    class Meta:
+        db_table = 'AppTierDiscountCodeAllowedEmail'
+        verbose_name = 'App tier discount code allowed email'
+        verbose_name_plural = 'App tier discount code allowed emails'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['discount_code', 'email_normalized'],
+                name='apptierdiscountallowed_unique_code_email',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.discount_code.code} → {self.email_normalized}'
+
+
 class AppSubscription(models.Model):
     """Owner's subscription to the app platform"""
     STATUS_CHOICES = [
@@ -138,6 +221,27 @@ class AppSubscription(models.Model):
     paystack_customer_code = models.CharField(max_length=255, blank=True, null=True)
     paystack_subscription_code = models.CharField(max_length=255, blank=True, null=True)
     paystack_transaction_reference = models.CharField(max_length=255, blank=True, null=True)
+
+    applied_discount_code = models.ForeignKey(
+        AppTierDiscountCode,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='app_subscriptions',
+        help_text='Discount code applied at subscribe (snapshot percent stored separately)',
+    )
+    discount_percent_applied = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text='Snapshot of discount_percent at checkout so code edits do not change in-flight amounts',
+    )
+    discount_redeemed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When redemption was counted against the code (idempotency for confirm vs webhook)',
+    )
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
