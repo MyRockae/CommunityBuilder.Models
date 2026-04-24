@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.utils.text import slugify
@@ -242,6 +242,13 @@ class CommunityGroup(models.Model):
     )
     offerings = models.JSONField(default=dict, blank=True, help_text='JSON field to store tier offerings/features')
     is_active = models.BooleanField(default=True, help_text='Whether this tier is currently active and available')
+    is_closed = models.BooleanField(
+        default=False,
+        help_text=(
+            'If true, self-serve subscribe requires an approved CommunityGroupJoinRequest for this tier; '
+            'legacy members with CommunityGroupAccess may auto-approve on subscribe per payment rules.'
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -327,6 +334,65 @@ class CommunityGroupAccess(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.community_group.name} ({self.community.name})"
+
+
+class CommunityGroupJoinRequest(models.Model):
+    """
+    Member request to join a closed community tier (CommunityGroup).
+    Owner/co-owner approve or reject; Payment subscribe gates on approved rows for is_closed tiers.
+    """
+
+    STATUS_PENDING = 'pending'
+    STATUS_APPROVED = 'approved'
+    STATUS_REJECTED = 'rejected'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Pending'),
+        (STATUS_APPROVED, 'Approved'),
+        (STATUS_REJECTED, 'Rejected'),
+        (STATUS_CANCELLED, 'Cancelled'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='community_group_join_requests')
+    community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='community_group_join_requests')
+    community_group = models.ForeignKey(
+        CommunityGroup,
+        on_delete=models.CASCADE,
+        related_name='join_requests',
+        help_text='Tier this request applies to; CASCADE removes requests when the tier is hard-deleted.',
+    )
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    message = models.TextField(blank=True, null=True, help_text='Optional note from the member')
+    source = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text='Optional audit tag (e.g. owner_grant, subscribe_auto_legacy)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    resolved_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='resolved_community_group_join_requests',
+        help_text='Owner/co-owner who approved or rejected; null for system-created rows',
+    )
+
+    class Meta:
+        db_table = 'CommunityGroupJoinRequest'
+        verbose_name = 'Community group join request'
+        verbose_name_plural = 'Community group join requests'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['community_group', 'status']),
+            models.Index(fields=['user', 'community_group']),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} {self.community_group_id} {self.status}'
+
 
 class CommunityBadgeDefinition(models.Model):
     """
@@ -431,6 +497,15 @@ class CommunitySocialLink(models.Model):
 
     def __str__(self):
         return f'{self.community.name} — {self.platform}'
+
+
+@receiver(post_delete, sender=CommunityGroupAccess)
+def delete_join_requests_when_group_access_deleted(sender, instance, **kwargs):
+    """Remove join-request rows for this user+tier when CommunityGroupAccess is deleted (any path)."""
+    CommunityGroupJoinRequest.objects.filter(
+        user_id=instance.user_id,
+        community_group_id=instance.community_group_id,
+    ).delete()
 
 
 # Signal to create default "hobby plan" when a community is created
