@@ -4,11 +4,11 @@ from app_models.account.models import User
 
 
 class Poll(models.Model):
-    """Poll model for community - associated with payment plans for access control"""
+    """Poll model for a community — tier access via linked community groups."""
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='polls', help_text='Community this poll belongs to')
     title = models.CharField(max_length=255, help_text='Title/question of the poll')
     description = models.TextField(blank=True, null=True, help_text='Description or additional context for the poll')
-    payment_plans = models.ManyToManyField(CommunityGroup, related_name='polls', blank=True, help_text='Community groups (tiers) that have access to this poll. Owners, co-owners, and moderators have access regardless of tier.')
+    community_groups = models.ManyToManyField(CommunityGroup, related_name='polls', blank=True, help_text='Community groups (tiers) that have access to this poll. Owners, co-owners, and moderators have access regardless of tier.')
     is_active = models.BooleanField(default=True, help_text='Whether this poll is currently active')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -81,7 +81,7 @@ class MeetingSeries(models.Model):
         blank=True,
         help_text='Total occurrences including the first when end type is AFTER_COUNT',
     )
-    payment_plans = models.ManyToManyField(
+    community_groups = models.ManyToManyField(
         CommunityGroup,
         related_name='meeting_series',
         blank=True,
@@ -193,7 +193,7 @@ class Meeting(models.Model):
         blank=True,
         help_text='Stable ordering within a series (e.g. 1-based occurrence index)',
     )
-    payment_plans = models.ManyToManyField(CommunityGroup, related_name='meetings', blank=True, help_text='Community groups (tiers) that have access to this meeting')
+    community_groups = models.ManyToManyField(CommunityGroup, related_name='meetings', blank=True, help_text='Community groups (tiers) that have access to this meeting')
     attendees = models.ManyToManyField(User, related_name='meetings_attending', blank=True, help_text='Users invited to the meeting')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

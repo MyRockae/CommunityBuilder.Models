@@ -6,7 +6,7 @@ from app_models.shared.validators import slug_username_validator
 class Resource(models.Model):
     """
     Resource is a folder for a community: name, friendly name, description.
-    Can be associated with zero or many payment plans for access control.
+    Can be associated with zero or many community groups (tiers) for access control.
     """
     community = models.ForeignKey(
         Community,
@@ -28,7 +28,7 @@ class Resource(models.Model):
         null=True,
         help_text='Description of the resource',
     )
-    payment_plans = models.ManyToManyField(
+    community_groups = models.ManyToManyField(
         CommunityGroup,
         related_name='resources',
         blank=True,

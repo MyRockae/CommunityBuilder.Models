@@ -10,7 +10,7 @@ class Forum(models.Model):
     name = models.CharField(max_length=255, help_text='Name of the forum (e.g., "General", "Announcements")')
     description = models.TextField(blank=True, null=True, help_text='Description of the forum')
     restrict_posting_to_owners_moderators = models.BooleanField(default=False, help_text='If true, only owners and moderators can post on this forum. If false, all members can post.')
-    payment_plans = models.ManyToManyField(CommunityGroup, related_name='forums', blank=True, help_text='Community groups (tiers) that have access to this forum')
+    community_groups = models.ManyToManyField(CommunityGroup, related_name='forums', blank=True, help_text='Community groups (tiers) that have access to this forum')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

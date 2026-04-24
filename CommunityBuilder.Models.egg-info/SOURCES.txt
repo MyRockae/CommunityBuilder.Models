@@ -14,6 +14,11 @@ app_models/account/migrations/__init__.py
 app_models/app_payments/__init__.py
 app_models/app_payments/models.py
 app_models/app_payments/migrations/0001_initial.py
+app_models/app_payments/migrations/0002_payoutprofile.py
+app_models/app_payments/migrations/0003_payoutprofile_legal_tax_identity.py
+app_models/app_payments/migrations/0004_alter_payoutprofile_identity_document_number_and_more.py
+app_models/app_payments/migrations/0005_paymentcheckoutsession.py
+app_models/app_payments/migrations/0006_rename_paymentcheck_user_stat_exp_idx_paymentchec_user_id_3cb72e_idx_and_more.py
 app_models/app_payments/migrations/__init__.py
 app_models/app_subscription/__init__.py
 app_models/app_subscription/models.py
@@ -32,6 +37,7 @@ app_models/app_subscription/migrations/0012_remove_moved_models_from_app_subscri
 app_models/app_subscription/migrations/0013_alter_appsubscriptiontier_price.py
 app_models/app_subscription/migrations/0014_remove_appsubscriptiontier_price.py
 app_models/app_subscription/migrations/0015_alter_appsubscriptiontier_options.py
+app_models/app_subscription/migrations/0016_apptierdiscountcode_and_more.py
 app_models/app_subscription/migrations/__init__.py
 app_models/badges/__init__.py
 app_models/badges/models.py
@@ -61,6 +67,10 @@ app_models/community/migrations/0014_communitygroupprice.py
 app_models/community/migrations/0015_remove_communitygroup_fee.py
 app_models/community/migrations/0016_remove_communitygroup_is_free.py
 app_models/community/migrations/0017_communitygroup_billing_period_flags.py
+app_models/community/migrations/0018_communitysociallink.py
+app_models/community/migrations/0019_communitygroup_avatar_url.py
+app_models/community/migrations/0020_communitysettings.py
+app_models/community/migrations/0021_communitygroup_is_closed_communitygroupjoinrequest.py
 app_models/community/migrations/__init__.py
 app_models/community_abuse_report/__init__.py
 app_models/community_abuse_report/models.py
@@ -80,6 +90,8 @@ app_models/community_classroom/models.py
 app_models/community_classroom/migrations/0001_initial.py
 app_models/community_classroom/migrations/0002_classroom_is_published.py
 app_models/community_classroom/migrations/0003_alter_classroom_payment_plans.py
+app_models/community_classroom/migrations/0004_classroom_published_at.py
+app_models/community_classroom/migrations/0005_rename_payment_plans_m2m_to_community_groups.py
 app_models/community_classroom/migrations/__init__.py
 app_models/community_classroom_content/__init__.py
 app_models/community_classroom_content/models.py
@@ -87,6 +99,7 @@ app_models/community_classroom_content/migrations/0001_initial.py
 app_models/community_classroom_content/migrations/0002_classroomcontent_thumbnail_url.py
 app_models/community_classroom_content/migrations/0003_replace_content_type_with_content_source.py
 app_models/community_classroom_content/migrations/0004_alter_classroomcontent_content_url.py
+app_models/community_classroom_content/migrations/0005_classroomcontent_activated_at.py
 app_models/community_classroom_content/migrations/__init__.py
 app_models/community_feedback/__init__.py
 app_models/community_feedback/models.py
@@ -98,6 +111,7 @@ app_models/community_forum/models.py
 app_models/community_forum/migrations/0001_initial.py
 app_models/community_forum/migrations/0002_post_is_pinned.py
 app_models/community_forum/migrations/0003_alter_forum_payment_plans.py
+app_models/community_forum/migrations/0004_rename_payment_plans_m2m_to_community_groups.py
 app_models/community_forum/migrations/__init__.py
 app_models/community_leave_reason/__init__.py
 app_models/community_leave_reason/models.py
@@ -109,12 +123,14 @@ app_models/community_meetings/models.py
 app_models/community_meetings/migrations/0001_initial.py
 app_models/community_meetings/migrations/0002_meeting_series.py
 app_models/community_meetings/migrations/0003_alter_meeting_payment_plans.py
+app_models/community_meetings/migrations/0004_rename_payment_plans_m2m_to_community_groups.py
 app_models/community_meetings/migrations/__init__.py
 app_models/community_polls/__init__.py
 app_models/community_polls/models.py
 app_models/community_polls/migrations/0001_initial.py
 app_models/community_polls/migrations/0002_alter_poll_payment_plans.py
 app_models/community_polls/migrations/0003_rename_poll_payment_plans_m2m_column.py
+app_models/community_polls/migrations/0004_rename_payment_plans_m2m_to_community_groups.py
 app_models/community_polls/migrations/__init__.py
 app_models/community_publicfeeds/__init__.py
 app_models/community_publicfeeds/models.py
@@ -124,6 +140,9 @@ app_models/community_quiz/__init__.py
 app_models/community_quiz/models.py
 app_models/community_quiz/migrations/0001_initial.py
 app_models/community_quiz/migrations/0002_alter_quiz_payment_plans.py
+app_models/community_quiz/migrations/0003_simple_quiz_rename_and_submission_retention.py
+app_models/community_quiz/migrations/0004_rename_simple_quiz_tables_and_related_names.py
+app_models/community_quiz/migrations/0005_rename_payment_plans_m2m_to_community_groups.py
 app_models/community_quiz/migrations/__init__.py
 app_models/community_resource/__init__.py
 app_models/community_resource/models.py
@@ -133,6 +152,7 @@ app_models/community_resource/migrations/0003_resourcecontent_content_source.py
 app_models/community_resource/migrations/0004_resource_and_resourcecontent_is_active.py
 app_models/community_resource/migrations/0005_resourcecontent_order_resource_type_thumbnail.py
 app_models/community_resource/migrations/0006_alter_resource_payment_plans.py
+app_models/community_resource/migrations/0007_rename_payment_plans_m2m_to_community_groups.py
 app_models/community_resource/migrations/__init__.py
 app_models/community_store/__init__.py
 app_models/community_store/models.py
@@ -145,6 +165,11 @@ app_models/community_store/migrations/__init__.py
 app_models/community_telegram/__init__.py
 app_models/community_telegram/models.py
 app_models/community_telegram/migrations/0001_initial.py
+app_models/community_telegram/migrations/0002_communitytelegram_platform_link_code.py
+app_models/community_telegram/migrations/0003_split_platform_and_private_chat_id.py
+app_models/community_telegram/migrations/0004_communitytelegram_private_link_code.py
+app_models/community_telegram/migrations/0005_split_platform_private_is_enabled.py
+app_models/community_telegram/migrations/0006_alter_communitytelegram_platform_chat_id_and_more.py
 app_models/community_telegram/migrations/__init__.py
 app_models/community_wheel/__init__.py
 app_models/community_wheel/models.py
@@ -174,4 +199,6 @@ app_models/user_profile/models.py
 app_models/user_profile/migrations/0001_initial.py
 app_models/user_profile/migrations/0002_useraddress.py
 app_models/user_profile/migrations/0003_rename_useraddress_user_bill_idx_useraddress_user_id_9fdbb6_idx_and_more.py
+app_models/user_profile/migrations/0004_userprofilesociallink.py
+app_models/user_profile/migrations/0005_useraddress_address_type.py
 app_models/user_profile/migrations/__init__.py

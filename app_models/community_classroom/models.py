@@ -15,7 +15,7 @@ class Classroom(models.Model):
     title = models.CharField(max_length=255, help_text='Title of the classroom')
     description = models.TextField(blank=True, null=True, help_text='Description of the classroom')
     banner_url = models.URLField(blank=True, null=True, help_text='URL of the classroom banner image')
-    payment_plans = models.ManyToManyField(CommunityGroup, related_name='classrooms', blank=True, help_text='Community groups (tiers) that have access to this classroom')
+    community_groups = models.ManyToManyField(CommunityGroup, related_name='classrooms', blank=True, help_text='Community groups (tiers) that have access to this classroom')
     enforce_progression = models.BooleanField(default=False, help_text='If True, users must complete content in order (one at a time). Owners/moderators can view all content regardless.')
     issue_certificate = models.BooleanField(default=False, help_text='If True, users will receive a certificate when all content in the classroom is completed')
     is_published = models.BooleanField(default=False, help_text='If True, the classroom is visible/published to members')

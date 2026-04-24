@@ -5,7 +5,7 @@ from app_models.account.models import User
 
 class SimpleQuiz(models.Model):
     """
-    Simple Quiz (MCQ) for a community — tier access via payment_plans.
+    Simple Quiz (MCQ) for a community — tier access via community_groups.
     Physical table: ``SimpleQuiz``.
     """
     community = models.ForeignKey(
@@ -20,7 +20,7 @@ class SimpleQuiz(models.Model):
     is_timed = models.BooleanField(default=False, help_text='Whether this quiz is timed (has a time limit)')
     has_attempt_limit = models.BooleanField(default=False, help_text='Whether this quiz has a limit on the number of attempts')
     max_attempts = models.PositiveIntegerField(null=True, blank=True, help_text='Maximum number of attempts allowed if has_attempt_limit is True')
-    payment_plans = models.ManyToManyField(
+    community_groups = models.ManyToManyField(
         CommunityGroup,
         related_name='simple_quizzes',
         blank=True,
