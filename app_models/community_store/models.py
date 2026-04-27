@@ -1,6 +1,7 @@
 import uuid
 from decimal import Decimal
 
+import django
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -246,6 +247,15 @@ class StoreBookableMeetingSettings(models.Model):
         return f'Bookable settings for {self.store_product_id}'
 
 
+def _store_avail_window_weekday_check_constraint():
+    """Django < 5.2 uses CheckConstraint(check=...); 5.2+ uses condition= (required in Django 6+)."""
+    q = models.Q(weekday__gte=1) & models.Q(weekday__lte=7)
+    name = 'store_avail_window_weekday_1_7'
+    if django.VERSION >= (5, 2):
+        return models.CheckConstraint(condition=q, name=name)
+    return models.CheckConstraint(check=q, name=name)
+
+
 class StoreOwnerAvailabilityWindow(models.Model):
     """One weekly window (local times in the parent settings time_zone) for bookable meeting products."""
 
@@ -269,10 +279,7 @@ class StoreOwnerAvailabilityWindow(models.Model):
         verbose_name = 'Store owner availability window'
         verbose_name_plural = 'Store owner availability windows'
         constraints = [
-            models.CheckConstraint(
-                check=models.Q(weekday__gte=1) & models.Q(weekday__lte=7),
-                name='store_avail_window_weekday_1_7',
-            ),
+            _store_avail_window_weekday_check_constraint(),
         ]
         indexes = [
             models.Index(fields=['settings', 'weekday']),
