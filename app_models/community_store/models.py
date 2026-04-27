@@ -1,7 +1,8 @@
 import uuid
 from decimal import Decimal
 
-from django.core.validators import MinValueValidator
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -42,8 +43,15 @@ class CommunityStore(models.Model):
         return f"Store – {self.community.name}"
 
 
+class StoreProductKind(models.TextChoices):
+    FILE = 'file', 'File download'
+    LINK = 'link', 'External link'
+    MEETING = 'meeting', 'Bookable meeting'
+
+
 class StoreProduct(models.Model):
-    """A digital product listed in a community store."""
+    """A digital product listed in a community store (file, external link, or bookable meeting)."""
+
     store = models.ForeignKey(
         CommunityStore,
         on_delete=models.CASCADE,
@@ -62,11 +70,20 @@ class StoreProduct(models.Model):
         null=True,
         help_text='Selling points / what the product is about',
     )
+    product_kind = models.CharField(
+        max_length=20,
+        choices=StoreProductKind.choices,
+        default=StoreProductKind.FILE,
+        db_index=True,
+        help_text='How the product is delivered after purchase',
+    )
     amount = models.DecimalField(
         max_digits=10,
         decimal_places=2,
+        null=True,
+        blank=True,
         validators=[MinValueValidator(Decimal('0.00'))],
-        help_text='Price charged for the product',
+        help_text='Legacy list price; prefer StoreProductPrice rows per currency',
     )
     thumbnail_url = models.URLField(
         blank=True,
@@ -86,7 +103,24 @@ class StoreProduct(models.Model):
         related_name='listed_store_products',
         help_text='User who uploaded / listed the product',
     )
-    file_url = models.URLField(help_text='URL of the downloadable product file')
+    file_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='URL of the downloadable file (required when product_kind is file)',
+    )
+    external_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='Customer-facing URL when product_kind is link',
+    )
+    template_meeting = models.ForeignKey(
+        'community_meetings.Meeting',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='store_products_ticket',
+        help_text='Optional fixed meeting to sell access to (MVP); native scheduling uses bookable settings',
+    )
     notes = models.TextField(
         blank=True,
         null=True,
@@ -111,10 +145,208 @@ class StoreProduct(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['store', 'is_active']),
+            models.Index(fields=['store', 'product_kind']),
         ]
+
+    def clean(self):
+        kind = self.product_kind or StoreProductKind.FILE
+        if kind == StoreProductKind.FILE:
+            if not (self.file_url or '').strip():
+                raise ValidationError({'file_url': 'File products require a file URL.'})
+        elif kind == StoreProductKind.LINK:
+            if not (self.external_url or '').strip():
+                raise ValidationError({'external_url': 'Link products require an external URL.'})
+        elif kind == StoreProductKind.MEETING:
+            pass
 
     def __str__(self):
         return self.name
+
+
+class StoreProductPrice(models.Model):
+    """List price for a store product in one ISO 4217 currency (mirrors CommunityGroupPrice)."""
+
+    store_product = models.ForeignKey(
+        StoreProduct,
+        on_delete=models.CASCADE,
+        related_name='prices',
+        help_text='Product this price applies to',
+    )
+    currency = models.CharField(
+        max_length=3,
+        help_text='ISO 4217 code (e.g. USD, NGN, GBP)',
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal('0.00'))],
+        help_text='List price in major units of this currency',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'StoreProductPrice'
+        verbose_name = 'Store product price'
+        verbose_name_plural = 'Store product prices'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['store_product', 'currency'],
+                name='storeproductprice_unique_product_currency',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['store_product', 'currency']),
+        ]
+
+    def __str__(self):
+        return f'{self.store_product_id} {self.currency} {self.amount}'
+
+
+class StoreBookableMeetingSettings(models.Model):
+    """1:1 with a meeting-type StoreProduct: duration, buffers, and owner timezone for slot generation."""
+
+    store_product = models.OneToOneField(
+        StoreProduct,
+        on_delete=models.CASCADE,
+        related_name='bookable_meeting_settings',
+        help_text='Meeting product these settings belong to',
+    )
+    time_zone = models.CharField(
+        max_length=64,
+        default='UTC',
+        help_text='IANA timezone for interpreting weekly availability windows',
+    )
+    duration_minutes = models.PositiveIntegerField(
+        default=30,
+        validators=[MinValueValidator(1)],
+        help_text='Length of each bookable slot',
+    )
+    buffer_before_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text='Unbookable gap before each slot',
+    )
+    buffer_after_minutes = models.PositiveIntegerField(
+        default=0,
+        help_text='Unbookable gap after each slot',
+    )
+    minimum_notice_minutes = models.PositiveIntegerField(
+        default=120,
+        help_text='Do not offer slots starting sooner than this many minutes from now',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'StoreBookableMeetingSettings'
+        verbose_name = 'Store bookable meeting settings'
+        verbose_name_plural = 'Store bookable meeting settings'
+
+    def __str__(self):
+        return f'Bookable settings for {self.store_product_id}'
+
+
+class StoreOwnerAvailabilityWindow(models.Model):
+    """One weekly window (local times in the parent settings time_zone) for bookable meeting products."""
+
+    settings = models.ForeignKey(
+        StoreBookableMeetingSettings,
+        on_delete=models.CASCADE,
+        related_name='windows',
+        help_text='Bookable settings this window belongs to',
+    )
+    weekday = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(7)],
+        help_text='ISO weekday 1=Monday … 7=Sunday',
+    )
+    local_start = models.TimeField(help_text='Start of availability in settings.time_zone')
+    local_end = models.TimeField(help_text='End of availability in settings.time_zone')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'StoreOwnerAvailabilityWindow'
+        verbose_name = 'Store owner availability window'
+        verbose_name_plural = 'Store owner availability windows'
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(weekday__gte=1) & models.Q(weekday__lte=7),
+                name='store_avail_window_weekday_1_7',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['settings', 'weekday']),
+        ]
+
+    def __str__(self):
+        return f'{self.settings_id} weekday={self.weekday} {self.local_start}-{self.local_end}'
+
+
+class StoreProductSlotHoldStatus(models.TextChoices):
+    PENDING = 'pending', 'Pending'
+    CONVERTED = 'converted', 'Converted to purchase'
+    RELEASED = 'released', 'Released'
+
+
+class StoreProductSlotHold(models.Model):
+    """
+    Short-lived reservation of a slot while checkout completes.
+    Unique (product, slot_start_utc) among pending holds prevents double booking.
+    """
+
+    store_product = models.ForeignKey(
+        StoreProduct,
+        on_delete=models.CASCADE,
+        related_name='slot_holds',
+        help_text='Product the slot belongs to',
+    )
+    slot_start_utc = models.DateTimeField(
+        db_index=True,
+        help_text='Slot start in UTC',
+    )
+    buyer_user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='store_product_slot_holds',
+        help_text='User who reserved the slot',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=StoreProductSlotHoldStatus.choices,
+        default=StoreProductSlotHoldStatus.PENDING,
+        db_index=True,
+    )
+    hold_until = models.DateTimeField(
+        help_text='When this hold expires if checkout does not complete',
+    )
+    store_purchase = models.ForeignKey(
+        'StorePurchase',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='slot_holds',
+        help_text='Purchase row created for this checkout when applicable',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'StoreProductSlotHold'
+        verbose_name = 'Store product slot hold'
+        verbose_name_plural = 'Store product slot holds'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['store_product', 'slot_start_utc'],
+                condition=models.Q(status=StoreProductSlotHoldStatus.PENDING),
+                name='store_slothold_unique_pending_slot',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['store_product', 'status', 'hold_until']),
+        ]
+
+    def __str__(self):
+        return f'Hold {self.store_product_id} {self.slot_start_utc} ({self.status})'
 
 
 class StorePurchase(models.Model):
@@ -208,6 +440,19 @@ class StorePurchase(models.Model):
         help_text='Set when purchase uses a Paystack subscription; usually null for one-off store sales',
     )
     paystack_transaction_reference = models.CharField(max_length=255, blank=True, null=True)
+    booked_slot_start_utc = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When product_kind is meeting: UTC start of the slot purchased (optional for MVP fixed meeting)',
+    )
+    booked_meeting = models.ForeignKey(
+        'community_meetings.Meeting',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='store_purchases',
+        help_text='Meeting created or linked after successful payment for meeting products',
+    )
     purchased_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -228,6 +473,7 @@ class StorePurchase(models.Model):
             models.Index(fields=['stripe_checkout_session_id']),
             models.Index(fields=['paystack_transaction_reference']),
             models.Index(fields=['payment_gateway']),
+            models.Index(fields=['booked_slot_start_utc']),
         ]
         constraints = [
             models.UniqueConstraint(
