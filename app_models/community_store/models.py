@@ -60,12 +60,6 @@ class StoreProduct(models.Model):
         help_text='Store this product belongs to',
     )
     name = models.CharField(max_length=255, help_text='Display name of the digital product')
-    summary = models.CharField(
-        max_length=500,
-        blank=True,
-        null=True,
-        help_text='Short summary shown in listings',
-    )
     description = models.TextField(
         blank=True,
         null=True,
@@ -120,7 +114,7 @@ class StoreProduct(models.Model):
         null=True,
         blank=True,
         related_name='store_products_ticket',
-        help_text='Optional fixed meeting to sell access to (MVP); native scheduling uses bookable settings',
+        help_text='Legacy/admin: fixed meeting row; bookable products use bookable_meeting_settings',
     )
     notes = models.TextField(
         blank=True,
