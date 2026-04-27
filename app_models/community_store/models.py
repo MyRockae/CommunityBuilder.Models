@@ -353,7 +353,10 @@ class StoreProductSlotHold(models.Model):
 class StorePurchase(models.Model):
     """
     A checkout / payment record for a product and buyer email.
-    At most one completed purchase per (product, buyer_email); repeat buyers get new download links only.
+
+    Completed file/link purchases: at most one per (product, buyer_email).
+    Completed meeting purchases: one per (product, buyer_email, booked_slot_start_utc) so repeat
+    bookings on the same product are allowed.
     """
     STATUS_PENDING = 'pending'
     STATUS_COMPLETED = 'completed'
@@ -479,8 +482,13 @@ class StorePurchase(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['product', 'buyer_email'],
-                condition=models.Q(status='completed'),
-                name='storepurchase_unique_completed_email_per_product',
+                condition=models.Q(status='completed') & models.Q(booked_slot_start_utc__isnull=True),
+                name='storepurchase_unique_completed_file_link',
+            ),
+            models.UniqueConstraint(
+                fields=['product', 'buyer_email', 'booked_slot_start_utc'],
+                condition=models.Q(status='completed') & models.Q(booked_slot_start_utc__isnull=False),
+                name='storepurchase_unique_completed_meeting_slot',
             ),
         ]
 
