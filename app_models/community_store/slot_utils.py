@@ -49,14 +49,18 @@ def generate_meeting_slot_intervals(
     range_end: date,
     now_utc: datetime,
     occupied_starts_utc: Optional[Iterable[datetime]] = None,
-    max_slots: int = 500,
+    max_slots: int = 4000,
+    filter_by_occupied: bool = True,
 ) -> List[Tuple[datetime, datetime]]:
     """
-    Return (start_utc, end_utc) for each bookable slot in [range_start, range_end].
+    Return (start_utc, end_utc) for each slot in [range_start, range_end] on the owner's grid.
 
     Slot starts are aligned on a fixed grid from each window's local_start, stepping by
     ``duration + buffer_before + buffer_after`` minutes. Slots respect ``minimum_notice_minutes``
-    from ``now_utc``. Occupied starts (exact UTC slot starts) are excluded.
+    from ``now_utc``.
+
+    When ``filter_by_occupied`` is True (default), occupied starts are omitted. When False,
+    all grid starts from ``earliest_utc`` onward are returned so callers can mark taken slots.
     """
     if not windows or range_end < range_start:
         return []
@@ -90,11 +94,16 @@ def generate_meeting_slot_intervals(
             cursor = window_start
             while cursor + duration_td <= window_end:
                 start_utc = normalize_utc_start(cursor.astimezone(dt_timezone.utc))
-                if start_utc >= earliest_utc and start_utc not in occ:
-                    end_utc = normalize_utc_start((cursor + duration_td).astimezone(dt_timezone.utc))
-                    results.append((start_utc, end_utc))
-                    if len(results) >= max_slots:
-                        return sorted(results, key=lambda x: x[0])
+                if start_utc < earliest_utc:
+                    cursor += step_td
+                    continue
+                if filter_by_occupied and start_utc in occ:
+                    cursor += step_td
+                    continue
+                end_utc = normalize_utc_start((cursor + duration_td).astimezone(dt_timezone.utc))
+                results.append((start_utc, end_utc))
+                if len(results) >= max_slots:
+                    return sorted(results, key=lambda x: x[0])
                 cursor += step_td
 
     results.sort(key=lambda x: x[0])
@@ -107,13 +116,12 @@ def list_meeting_slots_for_product_public(
     range_start: date,
     range_end: date,
     now_utc: Optional[datetime] = None,
-    max_slots: int = 500,
+    max_slots: int = 4000,
 ) -> List[dict]:
     """
-    JSON-serializable slots for storefront: ``start``, ``end`` (ISO-8601 UTC), ``label``.
-
-    ``product`` must be a meeting :class:`~app_models.community_store.models.StoreProduct`
-    with ``bookable_meeting_settings`` and ``windows`` prefetched when possible.
+    JSON-serializable slots for storefront: ``start``, ``end`` (ISO-8601 UTC), ``label``,
+    and ``available`` (bool). Taken or held starts are included with ``available: false`` so
+    UIs can grey them out like Calendly.
     """
     from app_models.community_store.models import StoreBookableMeetingSettings, StoreProductKind
 
@@ -148,6 +156,8 @@ def list_meeting_slots_for_product_public(
         ).values_list('slot_start_utc', flat=True)
     )
 
+    occ_set = {normalize_utc_start(x) for x in occupied}
+
     intervals = generate_meeting_slot_intervals(
         time_zone=settings.time_zone,
         duration_minutes=settings.duration_minutes,
@@ -160,6 +170,7 @@ def list_meeting_slots_for_product_public(
         now_utc=now_utc,
         occupied_starts_utc=occupied,
         max_slots=max_slots,
+        filter_by_occupied=False,
     )
 
     tz_label = (settings.time_zone or 'UTC').strip() or 'UTC'
@@ -172,11 +183,14 @@ def list_meeting_slots_for_product_public(
     for start_utc, end_utc in intervals:
         local = start_utc.astimezone(disp_tz)
         label = local.strftime('%a %d %b %Y, %H:%M')
+        su = normalize_utc_start(start_utc)
+        available = su not in occ_set
         out.append(
             {
                 'start': start_utc.isoformat().replace('+00:00', 'Z'),
                 'end': end_utc.isoformat().replace('+00:00', 'Z'),
                 'label': label,
+                'available': available,
             }
         )
     return out
