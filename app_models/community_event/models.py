@@ -22,6 +22,7 @@ class CommunityEvent(models.Model):
         help_text="Community that owns this event",
     )
     title = models.CharField(max_length=255, help_text="Event title")
+    summary = models.CharField(max_length=500, blank=True, null=True, help_text="Short event summary")
     description = models.TextField(blank=True, null=True, help_text="Event description")
     starts_at = models.DateTimeField(help_text="Event start datetime")
     ends_at = models.DateTimeField(help_text="Event end datetime")
@@ -49,6 +50,10 @@ class CommunityEvent(models.Model):
         help_text="Legacy list price; prefer CommunityEventPrice rows per currency",
     )
     banner_url = models.URLField(blank=True, null=True, help_text="Optional event banner")
+    attendee_limit = models.PositiveIntegerField(
+        default=0,
+        help_text="Maximum attendees; 0 means no limit",
+    )
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(
         User,
