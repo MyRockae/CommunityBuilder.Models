@@ -14,6 +14,10 @@ class CommunityEventVenueType(models.TextChoices):
     PHYSICAL = "physical", "Physical"
 
 
+def _default_agenda():
+    return []
+
+
 class CommunityEvent(models.Model):
     community = models.ForeignKey(
         Community,
@@ -53,6 +57,12 @@ class CommunityEvent(models.Model):
     attendee_limit = models.PositiveIntegerField(
         default=0,
         help_text="Maximum attendees; 0 means no limit",
+    )
+    agenda = models.JSONField(
+        default=_default_agenda,
+        blank=True,
+        help_text='Ordered schedule segments as JSON list, e.g. [{"title": str, "description": optional,'
+        ' "starts_at": iso-8601, "ends_at": iso-8601}]',
     )
     is_active = models.BooleanField(default=True)
     created_by = models.ForeignKey(
