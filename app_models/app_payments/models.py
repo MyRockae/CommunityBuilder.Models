@@ -8,9 +8,30 @@ from app_models.account.models import User
 def _payment_checkout_session_subject_check_constraint():
     """Django < 5.2 uses CheckConstraint(check=...); 5.2+ prefers condition= (required in Django 6+)."""
     q = (
-        Q(app_subscription__isnull=False, community_member_subscription__isnull=True, store_purchase__isnull=True)
-        | Q(app_subscription__isnull=True, community_member_subscription__isnull=False, store_purchase__isnull=True)
-        | Q(app_subscription__isnull=True, community_member_subscription__isnull=True, store_purchase__isnull=False)
+        Q(
+            app_subscription__isnull=False,
+            community_member_subscription__isnull=True,
+            store_purchase__isnull=True,
+            event_registration__isnull=True,
+        )
+        | Q(
+            app_subscription__isnull=True,
+            community_member_subscription__isnull=False,
+            store_purchase__isnull=True,
+            event_registration__isnull=True,
+        )
+        | Q(
+            app_subscription__isnull=True,
+            community_member_subscription__isnull=True,
+            store_purchase__isnull=False,
+            event_registration__isnull=True,
+        )
+        | Q(
+            app_subscription__isnull=True,
+            community_member_subscription__isnull=True,
+            store_purchase__isnull=True,
+            event_registration__isnull=False,
+        )
     )
     name = 'paymentcheckoutsession_exactly_one_subject'
     if django.VERSION >= (5, 2):
@@ -173,6 +194,7 @@ class PaymentCheckoutSession(models.Model):
         ('app_subscription', 'App Subscription'),
         ('community_member_subscription', 'Community Member Subscription'),
         ('store_purchase', 'Store Product Purchase'),
+        ('event_registration', 'Event Registration'),
     ]
 
     STATUS_PENDING = 'pending'
@@ -236,6 +258,14 @@ class PaymentCheckoutSession(models.Model):
         blank=True,
         help_text='Set when session_kind is store_purchase',
     )
+    event_registration = models.ForeignKey(
+        'community_event.EventRegistration',
+        on_delete=models.CASCADE,
+        related_name='payment_checkout_sessions',
+        null=True,
+        blank=True,
+        help_text='Set when session_kind is event_registration',
+    )
 
     payment_gateway = models.CharField(
         max_length=20,
@@ -287,6 +317,7 @@ class PaymentTransaction(models.Model):
         ('app_subscription', 'App Subscription'),
         ('community_member_subscription', 'Community Member Subscription'),
         ('store_purchase', 'Store Product Purchase'),
+        ('event_registration', 'Event Registration'),
     ]
 
     STATUS_CHOICES = [
@@ -320,6 +351,14 @@ class PaymentTransaction(models.Model):
         null=True,
         blank=True,
         help_text='Store product purchase (if transaction_type is store_purchase)',
+    )
+    event_registration = models.ForeignKey(
+        'community_event.EventRegistration',
+        on_delete=models.CASCADE,
+        related_name='payment_transactions',
+        null=True,
+        blank=True,
+        help_text='Event registration (if transaction_type is event_registration)',
     )
 
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text='Total payment amount charged to the buyer')
@@ -390,6 +429,7 @@ class PaymentTransaction(models.Model):
             models.Index(fields=['app_subscription', 'status']),
             models.Index(fields=['community_member_subscription', 'status']),
             models.Index(fields=['store_purchase', 'status']),
+            models.Index(fields=['event_registration', 'status']),
             models.Index(fields=['stripe_payment_intent_id']),
             models.Index(fields=['payment_gateway']),
             models.Index(fields=['transferred_to_owner']),
@@ -402,4 +442,6 @@ class PaymentTransaction(models.Model):
             return f"{self.community_member_subscription.user.email} - ${self.total_amount} - {self.status}"
         if self.store_purchase:
             return f"Store {self.store_purchase.buyer_email} - ${self.total_amount} - {self.status}"
+        if self.event_registration:
+            return f"Event registration {self.event_registration_id} - ${self.total_amount} - {self.status}"
         return f"Transaction - ${self.total_amount} - {self.status}"
