@@ -380,11 +380,9 @@ class StorePurchase(models.Model):
     )
     buyer_user = models.ForeignKey(
         User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.PROTECT,
         related_name='store_purchases',
-        help_text='Logged-in buyer, if any',
+        help_text='Logged-in buyer',
     )
     status = models.CharField(
         max_length=20,
