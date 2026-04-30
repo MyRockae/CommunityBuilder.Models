@@ -184,6 +184,21 @@ class EventRegistration(models.Model):
     paystack_transaction_reference = models.CharField(max_length=255, blank=True, null=True)
 
     purchased_at = models.DateTimeField(null=True, blank=True)
+
+    checked_in_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When staff checked in this attendee (physical events only).",
+    )
+    checked_in_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="event_registrations_checked_in",
+        help_text="Staff user who recorded check-in.",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
