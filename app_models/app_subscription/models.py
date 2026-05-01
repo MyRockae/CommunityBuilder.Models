@@ -7,6 +7,8 @@ from app_models.account.models import User
 from app_models.app_payments.models import PaymentGateway
 from app_models.community.models import Community, CommunityGroup
 
+from app_models.app_subscription.entitlements import validate_tier_entitlements
+
 
 class AppSubscriptionTier(models.Model):
     """App subscription tier definitions (Free/Hobby, Hobby, Professional, Enterprise)"""
@@ -20,38 +22,16 @@ class AppSubscriptionTier(models.Model):
     tier_name = models.CharField(max_length=50, choices=TIER_CHOICES, unique=True, help_text='Tier identifier')
     display_name = models.CharField(max_length=255, help_text='Display name for the tier')
 
-    # Limits
-    max_communities = models.IntegerField(null=True, blank=True, help_text='Maximum number of communities (null = unlimited)')
-    max_members = models.IntegerField(null=True, blank=True, help_text='Maximum members per community (null = unlimited)')
-    max_admins = models.IntegerField(null=True, blank=True, help_text='Maximum admins (co-owners + moderators) per community (null = unlimited)')
-    max_free_community_groups = models.IntegerField(null=True, blank=True, help_text='Maximum free community groups (tiers) per community (null = unlimited)')
-    max_paid_community_groups = models.IntegerField(null=True, blank=True, help_text='Maximum paid community groups (tiers) per community (null = unlimited)')
-    max_quiz_generations_per_month = models.IntegerField(null=True, blank=True, help_text='Maximum quiz generations per month (null = unlimited)')
-    max_forums = models.IntegerField(null=True, blank=True, help_text='Maximum forums per community (null = unlimited)')
-    max_classrooms = models.IntegerField(null=True, blank=True, help_text='Maximum classrooms per community (null = unlimited)')
-    storage_limit_gb = models.IntegerField(null=True, blank=True, help_text='Storage limit in GB per owner (null = unlimited)')
-
-    # Features (boolean flags)
-    has_basic_analytics = models.BooleanField(default=False)
-    has_advanced_analytics = models.BooleanField(default=False)
-    has_custom_reports = models.BooleanField(default=False)
-    has_standard_support = models.BooleanField(default=False)
-    has_priority_support = models.BooleanField(default=False)
-    has_24_7_support = models.BooleanField(default=False)
-    has_custom_branding = models.BooleanField(default=False)
-    has_white_label = models.BooleanField(default=False)
-    has_meeting_features = models.BooleanField(default=False)
-    has_advanced_meeting_features = models.BooleanField(default=False)
-    has_export_data = models.BooleanField(default=False)
-    has_api_access = models.BooleanField(default=False)
-    has_custom_integrations = models.BooleanField(default=False)
-    has_revenue_analytics = models.BooleanField(default=False)
-    has_dedicated_manager = models.BooleanField(default=False)
-    has_custom_development = models.BooleanField(default=False)
-    has_sso_saml = models.BooleanField(default=False)
-    has_advanced_security = models.BooleanField(default=False)
-    has_custom_sla = models.BooleanField(default=False)
-    has_multi_community_dashboard = models.BooleanField(default=False)
+    entitlements = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Caps and feature flags: {"limits": {...}, "features": {...}}. '
+            'Integer limits use null for unlimited. '
+            'max_admins counts co-owners and moderators only (owner excluded). '
+            'See app_models.app_subscription.entitlements.'
+        ),
+    )
 
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -65,6 +45,14 @@ class AppSubscriptionTier(models.Model):
 
     def __str__(self):
         return f'{self.display_name} ({self.tier_name})'
+
+    def clean(self):
+        super().clean()
+        validate_tier_entitlements(self.entitlements)
+
+    def save(self, *args, **kwargs):
+        validate_tier_entitlements(self.entitlements or {})
+        super().save(*args, **kwargs)
 
 
 class AppSubscriptionTierPrice(models.Model):
