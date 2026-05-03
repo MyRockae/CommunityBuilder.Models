@@ -1,4 +1,5 @@
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from app_models.account.models import User
 from app_models.community.models import Community, CommunityGroup
@@ -44,3 +45,48 @@ class Classroom(models.Model):
 
     def __str__(self):
         return f"{self.name} - {self.community.name}"
+
+
+class ClassroomReview(models.Model):
+    """
+    Member review for a classroom: star rating (1–5) and optional message.
+    One review per user per classroom; users can update their review.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='classroom_reviews',
+        help_text='User who left the review',
+    )
+    classroom = models.ForeignKey(
+        Classroom,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+        help_text='Classroom this review is for',
+    )
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        help_text='Star rating from 1 to 5',
+    )
+    message = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Optional review message',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ClassroomReview'
+        verbose_name = 'Classroom Review'
+        verbose_name_plural = 'Classroom Reviews'
+        unique_together = ['user', 'classroom']
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['classroom']),
+            models.Index(fields=['user', 'classroom']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.email} – {self.classroom.title} ({self.rating} stars)"
