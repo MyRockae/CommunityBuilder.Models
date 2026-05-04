@@ -1,6 +1,5 @@
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, F
 from django.utils import timezone
 from app_models.community_classroom.models import Classroom
 from app_models.account.models import User
@@ -120,17 +119,23 @@ class ClassroomResource(models.Model):
             models.Index(fields=['content']),
             models.Index(fields=['classroom']),
         ]
-        constraints = [
-            models.CheckConstraint(
-                check=Q(content__classroom_id=F('classroom_id')),
-                name='classroom_resource_content_classroom_match',
-            ),
-        ]
 
     def clean(self):
         super().clean()
         if self.content_id and self.classroom_id and self.content.classroom_id != self.classroom_id:
             raise ValidationError('classroom must match the classroom of content.')
+
+    def save(self, *args, **kwargs):
+        # DB CHECK cannot span relations (Django E041); enforce in code.
+        if self.content_id and self.classroom_id:
+            cc_room = (
+                ClassroomContent.objects.filter(pk=self.content_id)
+                .values_list('classroom_id', flat=True)
+                .first()
+            )
+            if cc_room is not None and cc_room != self.classroom_id:
+                raise ValidationError('classroom must match the classroom of content.')
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} ({self.kind}) — {self.content.title}"

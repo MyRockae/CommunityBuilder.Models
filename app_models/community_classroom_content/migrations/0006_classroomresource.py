@@ -2,7 +2,6 @@
 
 import django.db.models.deletion
 from django.db import migrations, models
-from django.db.models import F, Q
 
 
 class Migration(migrations.Migration):
@@ -79,12 +78,5 @@ class Migration(migrations.Migration):
         migrations.AddIndex(
             model_name='classroomresource',
             index=models.Index(fields=['classroom'], name='ClassroomReso_classro_4f8b22_idx'),
-        ),
-        migrations.AddConstraint(
-            model_name='classroomresource',
-            constraint=models.CheckConstraint(
-                check=Q(content__classroom_id=F('classroom_id')),
-                name='classroom_resource_content_classroom_match',
-            ),
         ),
     ]
