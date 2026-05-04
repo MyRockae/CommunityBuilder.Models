@@ -1,4 +1,6 @@
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q, F
 from django.utils import timezone
 from app_models.community_classroom.models import Classroom
 from app_models.account.models import User
@@ -69,6 +71,69 @@ class ClassroomAttachment(models.Model):
     
     def __str__(self):
         return f"{self.file_type} attachment for {self.content.title}"
+
+
+class ClassroomResource(models.Model):
+    """Named lesson materials for a content item: links, uploaded files, or external video URLs — distinct from community Resource library."""
+
+    KIND_CHOICES = [
+        ('link', 'Link'),
+        ('file', 'File'),
+        ('video', 'Video'),
+    ]
+
+    classroom = models.ForeignKey(
+        Classroom,
+        on_delete=models.CASCADE,
+        related_name='classroom_resources',
+        help_text='Classroom this resource belongs to (must match content.classroom)',
+    )
+    content = models.ForeignKey(
+        ClassroomContent,
+        on_delete=models.CASCADE,
+        related_name='classroom_resources',
+        help_text='Classroom content item this resource supplements',
+    )
+    title = models.CharField(max_length=255, help_text='Display label for the resource')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, help_text='link, file (stored object path), or video (external URL)')
+    url = models.TextField(
+        blank=True,
+        null=True,
+        help_text='External URL for link/video, or MinIO object path for uploaded files',
+    )
+    content_source = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        help_text='For video kind: e.g. youtube, vimeo (optional)',
+    )
+    order = models.IntegerField(default=0, help_text='Display order within the content item')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ClassroomResource'
+        verbose_name = 'Classroom Resource'
+        verbose_name_plural = 'Classroom Resources'
+        ordering = ['order', 'id']
+        indexes = [
+            models.Index(fields=['content']),
+            models.Index(fields=['classroom']),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                check=Q(content__classroom_id=F('classroom_id')),
+                name='classroom_resource_content_classroom_match',
+            ),
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.content_id and self.classroom_id and self.content.classroom_id != self.classroom_id:
+            raise ValidationError('classroom must match the classroom of content.')
+
+    def __str__(self):
+        return f"{self.title} ({self.kind}) — {self.content.title}"
 
 
 class ClassroomContentCompletion(models.Model):
