@@ -216,29 +216,39 @@ class CommunityView(models.Model):
         return f"{viewer} viewed {self.community.name} at {self.viewed_at}"
 
 class CommunityGroup(models.Model):
+    class BillingPeriod(models.TextChoices):
+        MONTHLY = 'monthly', 'Monthly'
+        YEARLY = 'yearly', 'Yearly'
+        LIFETIME = 'lifetime', 'Lifetime'
+        CUSTOM = 'custom', 'Custom'
+
     """
     Access tier for a community (formerly PaymentPlan).
     Whether the tier is free or paid is determined by CommunityGroupPrice rows: a tier is free when it has
     no price row with amount > 0 (or no rows at all). Gateway-specific amounts live on CommunityGroupPrice.
 
-    For paid tiers, billing cadence is exactly one of: monthly, yearly, or lifetime (one payment, access until
-    cancelled; no further charges). Recurring renewal must be implemented at the payment layer.
+    For paid tiers, billing cadence is one of: monthly, yearly, lifetime, or custom (fixed start/end window;
+    one-off payment for that window). Recurring renewal must be implemented at the payment layer.
     """
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='community_groups')
     name = models.CharField(max_length=255, help_text='Name of the group tier (e.g., "Standard", "Premium", "Enterprise")')
     description = models.TextField(blank=True, null=True, help_text='Description of what this tier offers')
     avatar_url = models.URLField(blank=True, null=True)
-    is_monthly = models.BooleanField(
-        default=False,
-        help_text='Member is charged each billing month (recurring; payment service must enforce)',
+    billing_period = models.CharField(
+        max_length=20,
+        choices=BillingPeriod.choices,
+        default=BillingPeriod.MONTHLY,
+        help_text='Billing cadence for paid tiers: monthly, yearly, lifetime, or custom fixed date range.',
     )
-    is_yearly = models.BooleanField(
-        default=False,
-        help_text='Member is charged each billing year (recurring; payment service must enforce)',
+    custom_period_start_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Fixed access window start for custom billing period tiers.',
     )
-    is_lifetime = models.BooleanField(
-        default=False,
-        help_text='One purchase: no further charges; access does not expire by period (expires_at null)',
+    custom_period_end_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='Fixed access window end for custom billing period tiers.',
     )
     offerings = models.JSONField(default=dict, blank=True, help_text='JSON field to store tier offerings/features')
     is_active = models.BooleanField(default=True, help_text='Whether this tier is currently active and available')
@@ -262,9 +272,13 @@ class CommunityGroup(models.Model):
     def clean(self):
         from django.core.exceptions import ValidationError
 
-        flags = sum(bool(x) for x in (self.is_monthly, self.is_yearly, self.is_lifetime))
-        if flags > 1:
-            raise ValidationError('Set at most one of is_monthly, is_yearly, is_lifetime.')
+        if self.billing_period == self.BillingPeriod.CUSTOM:
+            if not self.custom_period_start_at or not self.custom_period_end_at:
+                raise ValidationError('Custom billing period requires custom_period_start_at and custom_period_end_at.')
+            if self.custom_period_end_at <= self.custom_period_start_at:
+                raise ValidationError('custom_period_end_at must be greater than custom_period_start_at.')
+        elif self.custom_period_start_at or self.custom_period_end_at:
+            raise ValidationError('custom_period_start_at/custom_period_end_at are only allowed when billing_period is custom.')
 
     def save(self, *args, **kwargs):
         self.clean()
@@ -517,9 +531,7 @@ def create_default_community_group(sender, instance, created, **kwargs):
             community=instance,
             name='hobby plan',
             description='Default free tier for the community',
-            is_monthly=False,
-            is_yearly=False,
-            is_lifetime=True,
+            billing_period=CommunityGroup.BillingPeriod.LIFETIME,
             is_active=True,
         )
 
