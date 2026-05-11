@@ -94,3 +94,74 @@ class ClassroomReview(models.Model):
 
     def __str__(self):
         return f"{self.user.email} – {self.classroom.title} ({self.rating} stars)"
+
+
+class ClassroomCollection(models.Model):
+    """Named grouping of classrooms within a community (no collection-level access rules)."""
+
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='classroom_collections',
+        help_text='Community this collection belongs to',
+    )
+    title = models.CharField(max_length=255, help_text='Display title of the collection')
+    description = models.TextField(blank=True, null=True, help_text='Optional description')
+    banner_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='Optional collection-only banner URL (not derived from classrooms)',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'ClassroomCollection'
+        verbose_name = 'Classroom Collection'
+        verbose_name_plural = 'Classroom Collections'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['community']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} ({self.community_id})"
+
+
+class ClassroomCollectionItem(models.Model):
+    """Ordered membership of a classroom in a collection."""
+
+    collection = models.ForeignKey(
+        ClassroomCollection,
+        on_delete=models.CASCADE,
+        related_name='items',
+        help_text='Collection this row belongs to',
+    )
+    classroom = models.ForeignKey(
+        Classroom,
+        on_delete=models.CASCADE,
+        related_name='collection_items',
+        help_text='Classroom placed in the collection',
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        help_text='Sort order within the collection (lower first)',
+    )
+
+    class Meta:
+        db_table = 'ClassroomCollectionItem'
+        verbose_name = 'Classroom Collection Item'
+        verbose_name_plural = 'Classroom Collection Items'
+        ordering = ['order', 'id']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['collection', 'classroom'],
+                name='uniq_classroomcollectionitem_collection_classroom',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['collection', 'order']),
+        ]
+
+    def __str__(self):
+        return f"{self.collection_id}: {self.classroom_id} @ {self.order}"
