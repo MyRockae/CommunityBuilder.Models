@@ -6,7 +6,7 @@ from django.db.models import Q, F
 
 from app_models.account.models import User
 from app_models.community.models import Community, CommunityMember
-from app_models.community_classroom.models import ClassroomCollection
+from app_models.community_classroom.models import Classroom, ClassroomCollection
 
 
 def _edge_no_self_loop_constraint():
@@ -18,6 +18,17 @@ def _edge_no_self_loop_constraint():
     if django.VERSION >= (5, 0):
         return models.CheckConstraint(condition=q, name='learning_journey_edge_no_self_loop')
     return models.CheckConstraint(check=q, name='learning_journey_edge_no_self_loop')
+
+
+def _node_target_xor_constraint():
+    """Exactly one of classroom_collection or classroom must be set."""
+    q = (
+        Q(classroom_collection__isnull=False, classroom__isnull=True)
+        | Q(classroom_collection__isnull=True, classroom__isnull=False)
+    )
+    if django.VERSION >= (5, 0):
+        return models.CheckConstraint(condition=q, name='learning_journey_node_target_xor')
+    return models.CheckConstraint(check=q, name='learning_journey_node_target_xor')
 
 
 class LearningJourney(models.Model):
@@ -59,7 +70,7 @@ class LearningJourney(models.Model):
 
 
 class LearningJourneyNode(models.Model):
-    """One course bundle as a vertex in the journey DAG."""
+    """One journey stage: either a classroom collection (bundle) or a single classroom."""
 
     journey = models.ForeignKey(
         LearningJourney,
@@ -69,8 +80,23 @@ class LearningJourneyNode(models.Model):
     classroom_collection = models.ForeignKey(
         ClassroomCollection,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name='learning_journey_nodes',
-        help_text='Course bundle represented by this node',
+        help_text='Course bundle for this stage (mutually exclusive with classroom)',
+    )
+    classroom = models.ForeignKey(
+        Classroom,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='learning_journey_nodes',
+        help_text='Single classroom for this stage (mutually exclusive with classroom_collection)',
+    )
+    offerings = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Owner-defined perks/copy for this stage (e.g. bullets, headline)',
     )
     stable_id = models.UUIDField(
         default=uuid.uuid4,
@@ -83,9 +109,16 @@ class LearningJourneyNode(models.Model):
         verbose_name = 'Learning Journey Node'
         verbose_name_plural = 'Learning Journey Nodes'
         constraints = [
+            _node_target_xor_constraint(),
             models.UniqueConstraint(
                 fields=['journey', 'classroom_collection'],
-                name='uniq_learningjourneynode_journey_collection',
+                condition=Q(classroom_collection__isnull=False),
+                name='uniq_ljnode_journey_collection',
+            ),
+            models.UniqueConstraint(
+                fields=['journey', 'classroom'],
+                condition=Q(classroom__isnull=False),
+                name='uniq_ljnode_journey_classroom',
             ),
         ]
         indexes = [
@@ -93,7 +126,9 @@ class LearningJourneyNode(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.journey_id}: collection {self.classroom_collection_id}'
+        if self.classroom_collection_id:
+            return f'{self.journey_id}: collection {self.classroom_collection_id}'
+        return f'{self.journey_id}: classroom {self.classroom_id}'
 
 
 class LearningJourneyEdge(models.Model):
