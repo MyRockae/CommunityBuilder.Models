@@ -103,6 +103,16 @@ class LearningJourneyNode(models.Model):
         editable=False,
         help_text='Stable identity for API graph replace operations',
     )
+    layout_x = models.FloatField(
+        null=True,
+        blank=True,
+        help_text='Editor/preview canvas X (React Flow space); null = use auto-layout',
+    )
+    layout_y = models.FloatField(
+        null=True,
+        blank=True,
+        help_text='Editor/preview canvas Y (React Flow space); null = use auto-layout',
+    )
 
     class Meta:
         db_table = 'LearningJourneyNode'
