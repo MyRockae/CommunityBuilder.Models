@@ -26,6 +26,39 @@ class LessonDefinition(models.Model):
         null=True,
         help_text='Source: application, youtube, vimeo, etc.',
     )
+    VIDEO_STATUS_NONE = 'none'
+    VIDEO_STATUS_PROCESSING = 'processing'
+    VIDEO_STATUS_READY = 'ready'
+    VIDEO_STATUS_FAILED = 'failed'
+    VIDEO_STATUS_CHOICES = [
+        (VIDEO_STATUS_NONE, 'None'),
+        (VIDEO_STATUS_PROCESSING, 'Processing'),
+        (VIDEO_STATUS_READY, 'Ready'),
+        (VIDEO_STATUS_FAILED, 'Failed'),
+    ]
+    video_status = models.CharField(
+        max_length=20,
+        choices=VIDEO_STATUS_CHOICES,
+        default=VIDEO_STATUS_NONE,
+        help_text='Adaptive HLS transcode state (video bucket); none for non-video or tier without feature',
+    )
+    hls_manifest_object = models.CharField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text='MinIO object key for master.m3u8 in the video transcode bucket',
+    )
+    video_error = models.TextField(
+        blank=True,
+        null=True,
+        help_text='Last transcode error message when video_status is failed',
+    )
+    video_job_id = models.CharField(
+        max_length=36,
+        blank=True,
+        null=True,
+        help_text='VideoService transcode job UUID',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

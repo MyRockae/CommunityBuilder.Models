@@ -32,6 +32,7 @@ FEATURE_KEYS = frozenset(
         "has_api_access",
         "has_custom_domain",
         "has_custom_email",
+        "has_adaptive_video",
     }
 )
 
