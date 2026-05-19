@@ -73,6 +73,11 @@ class CustomUserManager(BaseUserManager):
         return self.create_user(email, password, **extra_fields)
 
 
+class VerificationEmailSendStatus(models.TextChoices):
+    SENT = 'sent', 'Sent'
+    FAILED = 'failed', 'Failed'
+
+
 class User(AbstractBaseUser):
     email = models.EmailField(unique=True)
     username = models.CharField(
@@ -102,6 +107,18 @@ class User(AbstractBaseUser):
     pending_email = models.EmailField(blank=True, null=True, help_text='New email address pending verification')
     email_change_code = models.CharField(max_length=6, blank=True, null=True, help_text='6-digit verification code for email change')
     email_change_code_expires_at = models.DateTimeField(blank=True, null=True, help_text='Expiration time for email change code')
+    verification_email_last_send_status = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        choices=VerificationEmailSendStatus.choices,
+        help_text='Result of the last verification email API send attempt.',
+    )
+    verification_email_last_sent_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='When the last verification email send attempt completed.',
+    )
 
     objects = CustomUserManager()
 
@@ -112,6 +129,15 @@ class User(AbstractBaseUser):
         self.verification_token = get_random_string(length=64)
         self.token_expires_at = timezone.now() + timezone.timedelta(hours=24)
         self.save(update_fields=['verification_token', 'token_expires_at'])
+
+    def can_resend_verification_email(self):
+        if self.is_verified:
+            return False
+        if self.verification_email_last_send_status != VerificationEmailSendStatus.SENT:
+            return True
+        if not self.token_expires_at or timezone.now() > self.token_expires_at:
+            return True
+        return False
 
     def generate_reset_token(self):
         self.reset_password_token = get_random_string(length=64)
