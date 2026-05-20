@@ -41,6 +41,13 @@ class PublicFeed(models.Model):
         verbose_name = 'Public Feed'
         verbose_name_plural = 'Public Feeds'
         ordering = ['-created_at']
+        indexes = [
+            models.Index(
+                fields=['-created_at'],
+                name='publicfeeds_top_created_idx',
+                condition=models.Q(parent_feed__isnull=True),
+            ),
+        ]
 
     def __str__(self):
         return f"Feed by {self.community.name} (posted by {self.posted_by.email})"
