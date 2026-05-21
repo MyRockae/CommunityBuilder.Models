@@ -130,7 +130,7 @@ class CommunityMember(models.Model):
     points = models.PositiveBigIntegerField(default=0, help_text='Cumulative points for community leaderboard')
     leaderboard_year = models.PositiveSmallIntegerField(
         default=_current_year,
-        help_text='Year this leaderboard period applies to; points reset when year changes.',
+        help_text='Deprecated: unused for leaderboard resets; cumulative points use points only.',
     )
 
     class Meta:
@@ -520,6 +520,49 @@ def delete_join_requests_when_group_access_deleted(sender, instance, **kwargs):
         user_id=instance.user_id,
         community_group_id=instance.community_group_id,
     ).delete()
+
+
+class LeaderboardPointAward(models.Model):
+    """Idempotent record for one-time leaderboard point events (join, tier subscribe, etc.)."""
+
+    community_member = models.ForeignKey(
+        CommunityMember,
+        on_delete=models.CASCADE,
+        related_name='leaderboard_point_awards',
+    )
+    action_key = models.CharField(max_length=64, db_index=True)
+    source_id = models.CharField(max_length=128)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'LeaderboardPointAward'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['community_member', 'action_key', 'source_id'],
+                name='uniq_leaderboard_point_award_member_action_source',
+            ),
+        ]
+
+
+class LeaderboardChatDailyCounter(models.Model):
+    """Daily cap for chat_message leaderboard awards per member."""
+
+    community_member = models.ForeignKey(
+        CommunityMember,
+        on_delete=models.CASCADE,
+        related_name='leaderboard_chat_daily_counters',
+    )
+    award_date = models.DateField(db_index=True)
+    award_count = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        db_table = 'LeaderboardChatDailyCounter'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['community_member', 'award_date'],
+                name='uniq_leaderboard_chat_daily_member_date',
+            ),
+        ]
 
 
 # Signal to create default "hobby plan" when a community is created
