@@ -5,15 +5,14 @@
 ## Architecture
 
 ```mermaid
-%%{init: {'themeVariables': {'fontSize': '18px'}, 'flowchart': {'nodeSpacing': 45, 'rankSpacing': 55}}}%%
 flowchart TB
   subgraph schema ["Schema source (this repo)"]
-    modelsPkg["CommunityBuilder.Models<br/>THIS REPO · app_models/*"]
-    migFiles["Migration files<br/>app_models/*/migrations/"]
+    modelsPkg["CommunityBuilder.Models - THIS REPO · app_models/*"]
+    migFiles["Migration files - app_models/*/migrations/"]
     modelsPkg --> migFiles
   end
 
-  dataMig["DataMigration project<br/>makemigrations · migrate"]
+  dataMig["DataMigration project - makemigrations · migrate"]
 
   subgraph consumers ["Django services (Git dependency)"]
     mainApi["Main API"]
@@ -22,7 +21,7 @@ flowchart TB
     mes["MES"]
   end
 
-  db[("PostgreSQL<br/>shared production DB")]
+  db[("PostgreSQL - shared production DB")]
 
   dataMig -->|"COMMUNITYBUILDER_MODELS_PATH"| modelsPkg
   dataMig -->|"migrate"| db
@@ -34,16 +33,9 @@ flowchart TB
   payApi --> db
   notif --> db
   mes --> db
-
-  click modelsPkg "https://github.com/MyRockae/CommunityBuilder.Models" _blank
-  click dataMig "https://github.com/MyRockae/CommunityBuilder.DataMigrations" _blank
-  click mainApi "https://github.com/MyRockae/CommunityBuilder.API" _blank
-  click payApi "https://github.com/MyRockae/CommunityBuilder.PaymentService" _blank
-  click notif "https://github.com/MyRockae/CommunityBuilder.NotificationService" _blank
-  click mes "https://github.com/MyRockae/CommunityBuilder.MES" _blank
 ```
 
-Click a box to open its [MyRockae](https://github.com/orgs/MyRockae/repositories) GitHub repo.
+**GitHub** repository links are in the tables below.
 
 ### Workflow
 
