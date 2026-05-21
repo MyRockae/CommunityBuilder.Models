@@ -9,9 +9,9 @@ This repository (`CommunityBuilder.Models`) holds shared Django-style models und
 
 **Applying or running database migrations is always done from the sibling project:**
 
-`C:\GIT\CommunityBuilder.DataMigration`
+`C:\GIT\Rockae\CommunityBuilder.DataMigration` — [CommunityBuilder.DataMigrations](https://github.com/MyRockae/CommunityBuilder.DataMigrations) on GitHub.
 
-That project is wired to this models package (dependency / path / packaging — however the solution is configured). Treat the two repos as one workflow:
+That project sets `COMMUNITYBUILDER_MODELS_PATH` to this repo root. Treat the two repos as one workflow:
 
 1. **Edit models and generate migration files** in `CommunityBuilder.Models` (e.g. `makemigrations` if you use it from a context that targets these apps).
 2. **Run `migrate` and any migration scripts or deployment steps** from `CommunityBuilder.DataMigration`, not from assuming this repo is the sole migration runner.

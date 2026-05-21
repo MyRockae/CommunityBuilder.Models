@@ -1,0 +1,52 @@
+---
+description: Rockae shared models package — schema source, migrations, and consumers
+alwaysApply: true
+---
+
+# CommunityBuilder.Models (this repo)
+
+**Python package** `app_models.*` — Django models and **migration files** for the Rockae platform. **No HTTP server.**
+
+**Local path:** `C:\GIT\Rockae\CommunityBuilder.Models`. **Install:** Git URL in consumer `requirements.txt` (see `INSTALL.md`).
+
+## Rules
+
+1. **Model and migration file changes happen here** (`app_models/<app>/models.py`, `migrations/`).
+2. **`makemigrations` / `migrate`** run from **`C:\GIT\Rockae\CommunityBuilder.DataMigration`** with `COMMUNITYBUILDER_MODELS_PATH` pointing at this repo.
+3. **Do not duplicate models** in API/Payment/Notification/MES repos — import `app_models.*`.
+4. After merge: apply migrations (DataMigration), then **bump Git pins** in each consumer service.
+
+## `INSTALLED_APPS` order
+
+- Declare **`app_models.app_payments` before `app_models.app_subscription`** (subscription imports `PaymentGateway`).
+- Include only apps each service uses (see consumer `settings.py`).
+
+## Imports
+
+```python
+from app_models.account.models import User
+from app_models.community.models import Community, CommunityMember
+from app_models.app_payments.models import PaymentTransaction
+```
+
+Payments: `app_models.app_payments`. Subscriptions: `app_models.app_subscription`. Storage limits: `app_models.storage_usage`.
+
+## Layout
+
+| Path | Contents |
+|------|----------|
+| `app_models/account/` | `User`, roles |
+| `app_models/community/` | Communities, members, groups, access |
+| `app_models/app_payments/` | Gateways, transactions, creator payout |
+| `app_models/app_subscription/` | App tiers, member subscriptions |
+| `app_models/community_*` | Forums, classrooms, chat, store, events, … |
+| `app_models/learning_journey/` | Journey nodes |
+| `app_models/member_engagement/` | Pulse / engagement rows |
+| `pyproject.toml` | Package metadata |
+
+## Docs
+
+- Architecture: root **`README.md`**
+- Git install: **`INSTALL.md`**
+- Migration workflow: **`data-migration-workflow.mdc`**
+- Monorepo map: **`workspace-repositories.mdc`**

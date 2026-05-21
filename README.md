@@ -1,6 +1,80 @@
-# CommunityBuilder.Models
+# CommunityBuilder.Models (Rockae shared schema)
 
-Shared Django models package for the CommunityBuilder platform. Use this repo as a dependency in your API (or other Django project) so all services share the same model and migration definitions.
+**GitHub:** [CommunityBuilder.Models](https://github.com/MyRockae/CommunityBuilder.Models) — **not** a production HTTP service. This repo is the **single source of truth** for Django models and migration **files** under `app_models/`.
+
+## Architecture
+
+```mermaid
+%%{init: {'themeVariables': {'fontSize': '18px'}, 'flowchart': {'nodeSpacing': 45, 'rankSpacing': 55}}}%%
+flowchart TB
+  subgraph schema ["Schema source (this repo)"]
+    modelsPkg["CommunityBuilder.Models<br/>THIS REPO · app_models/*"]
+    migFiles["Migration files<br/>app_models/*/migrations/"]
+    modelsPkg --> migFiles
+  end
+
+  dataMig["DataMigration project<br/>makemigrations · migrate"]
+
+  subgraph consumers ["Django services (Git dependency)"]
+    mainApi["Main API"]
+    payApi["Payment API"]
+    notif["Notification API"]
+    mes["MES"]
+  end
+
+  db[("PostgreSQL<br/>shared production DB")]
+
+  dataMig -->|"COMMUNITYBUILDER_MODELS_PATH"| modelsPkg
+  dataMig -->|"migrate"| db
+  mainApi --> modelsPkg
+  payApi --> modelsPkg
+  notif --> modelsPkg
+  mes --> modelsPkg
+  mainApi --> db
+  payApi --> db
+  notif --> db
+  mes --> db
+
+  click modelsPkg "https://github.com/MyRockae/CommunityBuilder.Models" _blank
+  click dataMig "https://github.com/MyRockae/CommunityBuilder.DataMigrations" _blank
+  click mainApi "https://github.com/MyRockae/CommunityBuilder.API" _blank
+  click payApi "https://github.com/MyRockae/CommunityBuilder.PaymentService" _blank
+  click notif "https://github.com/MyRockae/CommunityBuilder.NotificationService" _blank
+  click mes "https://github.com/MyRockae/CommunityBuilder.MES" _blank
+```
+
+Click a box to open its [MyRockae](https://github.com/orgs/MyRockae/repositories) GitHub repo.
+
+### Workflow
+
+| Step | Where | Command / action |
+|------|--------|------------------|
+| **Edit models** | This repo (`app_models/*/models.py`) | Change fields, relations, `Meta` |
+| **Generate migrations** | [CommunityBuilder.DataMigrations](https://github.com/MyRockae/CommunityBuilder.DataMigrations) | `python manage.py makemigrations` — writes into **this** repo’s `migrations/` folders |
+| **Apply migrations** | DataMigration project | `python manage.py migrate` against target `DATABASE_URL` |
+| **Ship to services** | API, Payment, Notification, MES, … | Bump Git pin in each `requirements.txt` after merge |
+
+**Do not** run `migrate` from service repos for schema changes — use **DataMigration** so all environments share the same migration history.
+
+### Consumers (install via `requirements.txt`)
+
+| Service | GitHub | Typical pin |
+|---------|--------|-------------|
+| **Main API** | [CommunityBuilder.API](https://github.com/MyRockae/CommunityBuilder.API) | `git+https://github.com/MyRockae/CommunityBuilder.Models.git@<commit>` |
+| **Payment API** | [CommunityBuilder.PaymentService](https://github.com/MyRockae/CommunityBuilder.PaymentService) | Same pattern |
+| **Notification API** | [CommunityBuilder.NotificationService](https://github.com/MyRockae/CommunityBuilder.NotificationService) | Same pattern |
+| **MES** | [CommunityBuilder.MES](https://github.com/MyRockae/CommunityBuilder.MES) | Same pattern |
+
+Imports: `from app_models.<app>.models import …`
+
+| | |
+|--|--|
+| **Python** | 3.8+ |
+| **Dependencies** | Django ≥ 4.1, djangorestframework |
+| **Local clone** | `C:\GIT\Rockae\CommunityBuilder.Models` |
+| **Cursor rules** | `.cursor/rules/rockae-models-context.mdc`, `workspace-repositories.mdc`, `data-migration-workflow.mdc` |
+
+---
 
 ## Overview
 
@@ -36,6 +110,11 @@ Shared Django models package for the CommunityBuilder platform. Use this repo as
 | `app_payments` | `PaymentGateway`, `PaymentTransaction`, `CreatorPayoutAccount` |
 | `app_subscription` | `AppSubscriptionTier`, `AppSubscriptionTierPrice`, `AppSubscription`, `CommunityMemberSubscription` |
 | `storage_usage` | `StorageUsage` (per-owner file bytes for tier limits) |
+| `learning_journey` | Learning journey nodes and member progress |
+| `member_engagement` | Member engagement / Pulse telemetry rows |
+| `metrics` | Platform metrics aggregates |
+| `community_store` | Digital products and purchases |
+| `community_event` | Community events and registrations |
 
 ## Installation
 
@@ -56,7 +135,11 @@ from app_models.community_classroom.models import Classroom
 # etc.
 ```
 
-Run migrations from your Django project so the database schema stays in sync with this package.
+Run **`migrate`** from [CommunityBuilder.DataMigrations](https://github.com/MyRockae/CommunityBuilder.DataMigrations), not from consumer service repos. See **`data-migration-workflow.mdc`**.
+
+## Related repositories
+
+Monorepo paths: [`.cursor/rules/workspace-repositories.mdc`](.cursor/rules/workspace-repositories.mdc). Package conventions: [`.cursor/rules/rockae-models-context.mdc`](.cursor/rules/rockae-models-context.mdc).
 
 ### CommunityGroup rename (`community.0011`)
 

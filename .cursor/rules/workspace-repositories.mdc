@@ -1,0 +1,32 @@
+---
+description: Local paths and production URLs for Rockae repositories under C:\GIT\Rockae
+alwaysApply: true
+---
+
+# Rockae monorepo folder (`C:\GIT\Rockae`)
+
+**Canonical local clones** live under **`C:\GIT\Rockae\`**, not `C:\GIT\CommunityBuilder.*`.
+
+**This workspace** is **`CommunityBuilder.Models`** — shared Django schema (`app_models.*`). **Not** an HTTP API. Migrations are **applied** from **`CommunityBuilder.DataMigration`**.
+
+## Schema workflow (pair with DataMigration)
+
+| Repo | Local path | GitHub |
+|------|------------|--------|
+| **Models (this repo)** | `C:\GIT\Rockae\CommunityBuilder.Models` | [CommunityBuilder.Models](https://github.com/MyRockae/CommunityBuilder.Models) |
+| **DataMigration** | `C:\GIT\Rockae\CommunityBuilder.DataMigration` | [CommunityBuilder.DataMigrations](https://github.com/MyRockae/CommunityBuilder.DataMigrations) |
+
+## Services that depend on this package
+
+| Service | Local path | Production |
+|---------|------------|------------|
+| **Main API** | `C:\GIT\Rockae\CommunityBuilder.API` | [https://api.rockae.com](https://api.rockae.com) |
+| **Payment API** | `C:\GIT\Rockae\CommunityBuilder.Payment` | [https://payment.rockae.com](https://payment.rockae.com) |
+| **Notification API** | `C:\GIT\Rockae\CommunityBuilder.NotificationService` | [https://notification-api.rockae.com/](https://notification-api.rockae.com/) |
+| **MES** | `C:\GIT\Rockae\CommunityBuilder.MES` | [https://mes.rockae.com](https://mes.rockae.com) |
+
+Each pins a commit in `requirements.txt` — bump after model changes are merged and migrations applied.
+
+## User-facing apps (indirect)
+
+Portal and mobile use the **shared Postgres schema** via Main API + Payment; they do not import this package directly.
