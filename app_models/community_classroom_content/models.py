@@ -88,6 +88,10 @@ class ClassroomLessonPlacement(models.Model):
         help_text='Canonical lesson row',
     )
     order = models.IntegerField(default=0, help_text='Order within this classroom (lower first)')
+    is_intro = models.BooleanField(
+        default=False,
+        help_text='When true, this syllabus row is the public intro/preview lesson for the classroom.',
+    )
 
     class Meta:
         db_table = 'ClassroomLessonPlacement'
