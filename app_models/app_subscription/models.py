@@ -269,6 +269,10 @@ class CommunityMemberSubscription(models.Model):
     community_group = models.ForeignKey(CommunityGroup, on_delete=models.CASCADE, related_name='member_subscriptions', help_text='Community group (tier) the member is subscribed to')
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', help_text='Current status of the subscription')
+    is_trial = models.BooleanField(
+        default=False,
+        help_text='True when access was granted via a free trial (no payment yet).',
+    )
     subscribed_at = models.DateTimeField(auto_now_add=True, help_text='When the subscription was created')
     activated_at = models.DateTimeField(null=True, blank=True, help_text='When the subscription was activated (payment confirmed)')
     expires_at = models.DateTimeField(null=True, blank=True, help_text='When the subscription expires (for recurring plans)')

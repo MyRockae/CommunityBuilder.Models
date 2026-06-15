@@ -259,6 +259,11 @@ class CommunityGroup(models.Model):
             'legacy members with CommunityGroupAccess may auto-approve on subscribe per payment rules.'
         ),
     )
+    trial_days = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='Optional free trial length in days for paid tiers. Null or 0 means no trial.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
