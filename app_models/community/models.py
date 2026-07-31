@@ -578,7 +578,7 @@ class FeaturedCommunity(models.Model):
         on_delete=models.CASCADE,
         related_name='featured_slot',
     )
-    featured_image_url = models.URLField()
+    featured_image_url = models.URLField(max_length=2048)
     display_order = models.PositiveIntegerField(default=0, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
