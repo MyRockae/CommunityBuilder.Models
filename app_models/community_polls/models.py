@@ -10,6 +10,18 @@ class Poll(models.Model):
     description = models.TextField(blank=True, null=True, help_text='Description or additional context for the poll')
     community_groups = models.ManyToManyField(CommunityGroup, related_name='polls', blank=True, help_text='Community groups (tiers) that have access to this poll. Owners, co-owners, and moderators have access regardless of tier.')
     is_active = models.BooleanField(default=True, help_text='Whether this poll is currently active')
+    allow_multiple_choices = models.BooleanField(
+        default=False,
+        help_text='When true, voters may select more than one option',
+    )
+    allow_revote = models.BooleanField(
+        default=True,
+        help_text='When true, voters may change their previous selection(s)',
+    )
+    show_results = models.BooleanField(
+        default=True,
+        help_text='When true, vote tallies are visible to members',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -51,7 +63,8 @@ class PollVote(models.Model):
         db_table = 'PollVote'
         verbose_name = 'Poll Vote'
         verbose_name_plural = 'Poll Votes'
-        unique_together = ['poll', 'user']  # Each user can only vote once per poll
+        # One row per (poll, user, option) so multi-select polls can store multiple choices.
+        unique_together = ['poll', 'user', 'option']
         ordering = ['-created_at']
     
     def __str__(self):
