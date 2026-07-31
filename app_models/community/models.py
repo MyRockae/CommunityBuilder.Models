@@ -570,6 +570,27 @@ class LeaderboardChatDailyCounter(models.Model):
         ]
 
 
+class FeaturedCommunity(models.Model):
+    """Curated homepage / discovery slot for a community (at most one per community)."""
+
+    community = models.OneToOneField(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='featured_slot',
+    )
+    featured_image_url = models.URLField()
+    display_order = models.PositiveIntegerField(default=0, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'FeaturedCommunity'
+        ordering = ['display_order', 'id']
+
+    def __str__(self):
+        return f'FeaturedCommunity({self.community_id}, order={self.display_order})'
+
+
 # Signal to create default "hobby plan" when a community is created
 @receiver(post_save, sender=Community)
 def create_default_community_group(sender, instance, created, **kwargs):
