@@ -33,6 +33,11 @@ class CommunityBlogPost(models.Model):
         null=True,
         help_text='URL of the blog post image',
     )
+    is_published = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text='False for TipTap media drafts; True when visible on the public blog',
+    )
     writer = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
