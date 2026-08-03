@@ -135,21 +135,14 @@ class CreatorPayoutAccount(models.Model):
         return f'{self.user.email} — {self.payment_gateway} ({self.status})'
 
 
-class PayoutProfile(models.Model):
-    """Per-user payout preferences (one row per user)."""
+class UserFiscalProfile(models.Model):
+    """Per-user tax/KYC identity (one row per user). Checkout routing is derived from tax address."""
 
     user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='payout_profile',
-        help_text='User this payout profile belongs to',
-    )
-    preferred_payment_gateway = models.CharField(
-        max_length=20,
-        choices=PaymentGateway.choices,
-        blank=True,
-        null=True,
-        help_text='Preferred processor for payouts when the user has multiple options',
+        related_name='fiscal_profile',
+        help_text='User this fiscal profile belongs to',
     )
     legal_full_name = models.CharField(
         max_length=255,
@@ -163,6 +156,12 @@ class PayoutProfile(models.Model):
         null=True,
         help_text='Hashed tax identifier (e.g. EIN, VAT); never store plaintext',
     )
+    identity_document_type = models.CharField(
+        max_length=64,
+        blank=True,
+        default='',
+        help_text='Document type for KYC (e.g. passport, national_id, drivers_license)',
+    )
     identity_document_number = models.CharField(
         max_length=255,
         blank=True,
@@ -173,13 +172,17 @@ class PayoutProfile(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'PayoutProfile'
-        verbose_name = 'Payout profile'
-        verbose_name_plural = 'Payout profiles'
+        db_table = 'UserFiscalProfile'
+        verbose_name = 'User fiscal profile'
+        verbose_name_plural = 'User fiscal profiles'
 
     def __str__(self):
-        gw = self.preferred_payment_gateway or '—'
-        return f'{self.user.email} — preferred: {gw}'
+        name = (self.legal_full_name or '').strip() or '—'
+        return f'{self.user.email} — {name}'
+
+
+# Backwards-compatible alias for gradual import updates (prefer UserFiscalProfile).
+PayoutProfile = UserFiscalProfile
 
 
 class PaymentCheckoutSession(models.Model):
