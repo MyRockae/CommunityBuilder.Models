@@ -4,13 +4,14 @@ Resolve buyer country for catalog/checkout/gateway routing.
 Source address type is configurable via ``BUYER_ROUTING_ADDRESS_TYPE``
 (currently ``tax``). Change that constant if routing should use ``billing``
 (or another type) later — callers keep using ``resolve_buyer_country``.
+
+``UserAddress`` is imported lazily so this module can load before
+``app_models.user_profile`` is registered (e.g. Payment INSTALLED_APPS).
 """
 
 from __future__ import annotations
 
 from typing import Optional
-
-from app_models.user_profile.models import UserAddress
 
 # Address type used for price/currency/gateway routing. Swap to 'billing' later if needed.
 BUYER_ROUTING_ADDRESS_TYPE = 'tax'
@@ -27,12 +28,14 @@ def normalize_country_code(code: str | None) -> str | None:
     return normalized
 
 
-def get_buyer_routing_address(user) -> Optional[UserAddress]:
+def get_buyer_routing_address(user):
     """UserAddress used for checkout/catalog routing, or None."""
     if user is None or not getattr(user, 'is_authenticated', True):
         return None
     if getattr(user, 'pk', None) is None:
         return None
+    from app_models.user_profile.models import UserAddress
+
     return (
         UserAddress.objects.filter(user=user, address_type=BUYER_ROUTING_ADDRESS_TYPE)
         .order_by('-updated_at')
