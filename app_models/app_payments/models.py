@@ -181,10 +181,6 @@ class UserFiscalProfile(models.Model):
         return f'{self.user.email} — {name}'
 
 
-# Backwards-compatible alias for gradual import updates (prefer UserFiscalProfile).
-PayoutProfile = UserFiscalProfile
-
-
 class PaymentCheckoutSession(models.Model):
     """
     Short-lived browser/mobile checkout handoff (opaque URL token → exchange for payment UI data).
