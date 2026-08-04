@@ -119,6 +119,10 @@ class User(AbstractBaseUser):
         null=True,
         help_text='When the last verification email send attempt completed.',
     )
+    token_version = models.PositiveIntegerField(
+        default=0,
+        help_text='Incremented to revoke all outstanding JWTs for this user.',
+    )
 
     objects = CustomUserManager()
 
@@ -143,6 +147,16 @@ class User(AbstractBaseUser):
         self.reset_password_token = get_random_string(length=64)
         self.token_expires_at = timezone.now() + timezone.timedelta(hours=1)
         self.save(update_fields=['reset_password_token', 'token_expires_at'])
+
+    def bump_token_version(self) -> int:
+        """Invalidate all existing JWTs for this user; returns the new version."""
+        from django.db.models import F
+
+        type(self).objects.filter(pk=self.pk).update(
+            token_version=F('token_version') + 1,
+        )
+        self.refresh_from_db(fields=['token_version'])
+        return int(self.token_version or 0)
 
     def __str__(self):
         return self.email
