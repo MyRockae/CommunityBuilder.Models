@@ -1,6 +1,6 @@
 from django.db import models
 from app_models.account.models import User
-from app_models.community.models import Community
+from app_models.community.models import Community, CommunityGroup
 
 
 class Wheel(models.Model):
@@ -13,6 +13,7 @@ class Wheel(models.Model):
         ('draft', 'Draft'),
         ('open_for_join', 'Open for Join'),
         ('in_progress', 'In Progress'),
+        ('paused', 'Paused'),
         ('completed', 'Completed'),
         ('cancelled', 'Cancelled'),
     ]
@@ -22,6 +23,12 @@ class Wheel(models.Model):
         on_delete=models.CASCADE,
         related_name='wheels',
         help_text='Community this wheel belongs to',
+    )
+    community_groups = models.ManyToManyField(
+        CommunityGroup,
+        related_name='wheels',
+        blank=True,
+        help_text='Community groups (tiers) that have access to this wheel. Owners and co-owners have access regardless of tier.',
     )
     created_by = models.ForeignKey(
         User,
@@ -46,6 +53,15 @@ class Wheel(models.Model):
         null=True,
         blank=True,
         help_text='Length of each recipient’s round in days (e.g. 30). Deadline to pay = end of their round.',
+    )
+    paused_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the wheel was paused; null while it is running.',
+    )
+    round_paused_seconds = models.PositiveIntegerField(
+        default=0,
+        help_text='Seconds the current round has spent paused. Added to the round deadline; reset when a round completes.',
     )
     max_members = models.PositiveIntegerField(
         blank=True,
