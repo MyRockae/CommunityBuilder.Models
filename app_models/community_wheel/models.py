@@ -52,7 +52,10 @@ class Wheel(models.Model):
     round_duration_days = models.PositiveIntegerField(
         null=True,
         blank=True,
-        help_text='Length of each recipient’s round in days (e.g. 30). Deadline to pay = end of their round.',
+        help_text=(
+            'Length of each recipient’s round in days (e.g. 30). '
+            'Contributions are only accepted during the last 5 days of this window.'
+        ),
     )
     paused_at = models.DateTimeField(
         null=True,
