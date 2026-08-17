@@ -18,7 +18,11 @@ class LessonDefinition(models.Model):
     title = models.CharField(max_length=255, help_text='Title of the lesson')
     description = models.TextField(blank=True, null=True, help_text='Description')
     notes = models.TextField(blank=True, null=True, help_text='Lesson notes/details')
-    content_url = models.URLField(blank=True, null=True, help_text='URL of main content (video) or MinIO object path')
+    content_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='Storage ref or external URL for non-video files; embeds use a full https URL',
+    )
     thumbnail_url = models.URLField(blank=True, null=True, help_text='Thumbnail image URL (public)')
     content_source = models.CharField(
         max_length=50,
@@ -40,7 +44,7 @@ class LessonDefinition(models.Model):
         max_length=20,
         choices=VIDEO_STATUS_CHOICES,
         default=VIDEO_STATUS_NONE,
-        help_text='Adaptive HLS state (Bunny Stream or legacy MinIO video bucket)',
+        help_text='Bunny Stream encode state',
     )
     bunny_video_id = models.CharField(
         max_length=36,
@@ -48,22 +52,10 @@ class LessonDefinition(models.Model):
         null=True,
         help_text='Bunny Stream video GUID',
     )
-    hls_manifest_object = models.CharField(
-        max_length=500,
-        blank=True,
-        null=True,
-        help_text='MinIO object key for master.m3u8 in the video transcode bucket',
-    )
     video_error = models.TextField(
         blank=True,
         null=True,
-        help_text='Last transcode error message when video_status is failed',
-    )
-    video_job_id = models.CharField(
-        max_length=36,
-        blank=True,
-        null=True,
-        help_text='VideoService transcode job UUID',
+        help_text='Last Bunny encode error when video_status is failed',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -142,7 +134,7 @@ class LessonDefinitionAttachment(models.Model):
     )
     title = models.CharField(max_length=255, help_text='Display title or label')
     kind = models.CharField(max_length=20, choices=KIND_CHOICES, help_text='link, file (stored path), video (URL), supplement (legacy attachment)')
-    url = models.TextField(blank=True, null=True, help_text='External URL or MinIO object path')
+    url = models.TextField(blank=True, null=True, help_text='External URL or storage ref')
     content_source = models.CharField(max_length=50, blank=True, null=True, help_text='For video: youtube, vimeo, etc.')
     supplement_file_type = models.CharField(
         max_length=10,

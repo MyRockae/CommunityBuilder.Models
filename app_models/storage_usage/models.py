@@ -33,7 +33,7 @@ class StorageUsage(models.Model):
         related_name='storage_usage',
         help_text='Community owner (for per-owner storage limits)',
     )
-    file_path = models.CharField(max_length=500, help_text='MinIO object path')
+    file_path = models.CharField(max_length=500, help_text='Object storage key')
     file_size = models.BigIntegerField(help_text='File size in bytes')
     file_type = models.CharField(max_length=50, choices=FILE_TYPE_CHOICES, default='other')
     parent_entity_type = models.CharField(max_length=100, null=True, blank=True, help_text='Type of parent entity (e.g. Classroom, Post)')

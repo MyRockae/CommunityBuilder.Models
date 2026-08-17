@@ -89,7 +89,7 @@ class ResourceContent(models.Model):
         help_text='Source of the content, e.g. upload, youtube, vimeo (API-defined string)',
     )
     file_url = models.URLField(
-        help_text='URL of the file in storage (e.g. MinIO bucket)',
+        help_text='Storage ref or external URL for the file',
     )
     thumbnail_url = models.URLField(
         blank=True,
@@ -114,7 +114,7 @@ class ResourceContent(models.Model):
         max_length=20,
         choices=VIDEO_STATUS_CHOICES,
         default=VIDEO_STATUS_NONE,
-        help_text='Adaptive HLS state (Bunny Stream or legacy MinIO video bucket)',
+        help_text='Bunny Stream encode state',
     )
     bunny_video_id = models.CharField(
         max_length=36,
@@ -122,22 +122,10 @@ class ResourceContent(models.Model):
         null=True,
         help_text='Bunny Stream video GUID',
     )
-    hls_manifest_object = models.CharField(
-        max_length=500,
-        blank=True,
-        null=True,
-        help_text='MinIO object key for master.m3u8 in the video transcode bucket',
-    )
     video_error = models.TextField(
         blank=True,
         null=True,
-        help_text='Last transcode error message when video_status is failed',
-    )
-    video_job_id = models.CharField(
-        max_length=36,
-        blank=True,
-        null=True,
-        help_text='VideoService transcode job UUID',
+        help_text='Last Bunny encode error when video_status is failed',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
