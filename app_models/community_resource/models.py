@@ -114,7 +114,13 @@ class ResourceContent(models.Model):
         max_length=20,
         choices=VIDEO_STATUS_CHOICES,
         default=VIDEO_STATUS_NONE,
-        help_text='Adaptive HLS transcode state (video bucket); none for non-video or tier without feature',
+        help_text='Adaptive HLS state (Bunny Stream or legacy MinIO video bucket)',
+    )
+    bunny_video_id = models.CharField(
+        max_length=36,
+        blank=True,
+        null=True,
+        help_text='Bunny Stream video GUID',
     )
     hls_manifest_object = models.CharField(
         max_length=500,
