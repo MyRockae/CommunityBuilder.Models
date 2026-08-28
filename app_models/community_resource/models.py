@@ -122,6 +122,12 @@ class ResourceContent(models.Model):
         null=True,
         help_text='Bunny Stream video GUID',
     )
+    bunny_thumbnail_file_name = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Bunny CDN thumbnail filename (e.g. thumbnail.jpg)',
+    )
     video_error = models.TextField(
         blank=True,
         null=True,
