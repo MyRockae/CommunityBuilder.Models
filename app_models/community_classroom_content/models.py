@@ -92,9 +92,9 @@ class ClassroomLessonPlacement(models.Model):
         help_text='Canonical lesson row',
     )
     order = models.IntegerField(default=0, help_text='Order within this classroom (lower first)')
-    is_intro = models.BooleanField(
+    is_preview = models.BooleanField(
         default=False,
-        help_text='When true, this syllabus row is the public intro/preview lesson for the classroom.',
+        help_text='When true, unauthenticated visitors can view this syllabus row (notes and playback) on the public classroom page.',
     )
 
     class Meta:
@@ -111,6 +111,7 @@ class ClassroomLessonPlacement(models.Model):
         indexes = [
             models.Index(fields=['classroom']),
             models.Index(fields=['lesson_definition']),
+            models.Index(fields=['classroom', 'is_preview'], name='clp_classroom_preview_idx'),
         ]
 
     def __str__(self):
