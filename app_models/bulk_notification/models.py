@@ -252,6 +252,14 @@ class EmailCampaign(models.Model):
         default='',
         help_text='Storage ref for the banner image; must live under the public/ zone',
     )
+    attachments = models.JSONField(
+        default=list,
+        blank=True,
+        help_text=(
+            'Downloadable files sent with the campaign. Each item is '
+            '{storage_ref, filename, content_type, size_bytes} under the public/ zone.'
+        ),
+    )
     audience = models.CharField(
         max_length=32,
         choices=EmailCampaignAudience.choices,
