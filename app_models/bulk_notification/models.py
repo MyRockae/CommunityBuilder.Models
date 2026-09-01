@@ -11,6 +11,7 @@ class NotificationEvent(models.TextChoices):
     CLASSROOM_PUBLISHED = 'classroom_published', 'Classroom published'
     INACTIVE_USER = 'inactive_user', 'Inactive user'
     VIEWS_MOMENTUM = 'views_momentum', 'Community views momentum'
+    MARKETING_CAMPAIGN = 'marketing_campaign', 'Marketing campaign'
 
 
 class NotificationBatchStatus(models.TextChoices):
@@ -169,6 +170,129 @@ class MemberNotificationPreference(models.Model):
 
     def __str__(self):
         return f'prefs user={self.user_id} community={self.community_id}'
+
+
+class PlatformNotificationPreference(models.Model):
+    """
+    Account-level opt-out for platform mail that belongs to no community.
+
+    Kept apart from ``MemberNotificationPreference``, which is scoped to a community and
+    so cannot record an opt-out for a user who has joined none, and apart from
+    ``EmailSuppression``, which is a reputation block for addresses we must never touch
+    again. Opting out of marketing must not stop community notifications or password
+    resets.
+    """
+
+    user = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='platform_notification_preference',
+    )
+    marketing_opt_out = models.BooleanField(
+        default=False,
+        help_text='When true, the user receives no marketing campaigns',
+    )
+    inactive_user_opt_out = models.BooleanField(
+        default=False,
+        help_text='When true, the user receives no re-engagement reminders',
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'PlatformNotificationPreference'
+        verbose_name = 'Platform notification preference'
+        verbose_name_plural = 'Platform notification preferences'
+
+    def __str__(self):
+        return f'platform prefs user={self.user_id}'
+
+
+class EmailCampaignStatus(models.TextChoices):
+    DRAFT = 'draft', 'Draft'
+    SENDING = 'sending', 'Sending'
+    SENT = 'sent', 'Sent'
+    FAILED = 'failed', 'Failed'
+
+
+class EmailCampaignAudience(models.TextChoices):
+    ALL_USERS = 'all_users', 'All verified active users'
+
+
+class EmailCampaign(models.Model):
+    """
+    An admin-authored marketing email.
+
+    The body is stored as an editor document rather than HTML so the send path can
+    render email-safe markup itself; accepting HTML from a browser would mean shipping
+    whatever the editor emitted straight to an inbox.
+
+    Progress is not duplicated here. Once ``batch`` is set, counts and terminal state
+    come from that row, so there is one writer for delivery state.
+    """
+
+    title = models.CharField(
+        max_length=255,
+        help_text='Internal name, never shown to recipients',
+    )
+    subject = models.CharField(max_length=255)
+    preheader = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Preview text shown after the subject in most inboxes',
+    )
+    content_json = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='Editor document; rendered to email-safe HTML at send time',
+    )
+    hero_image_url = models.CharField(
+        max_length=1024,
+        blank=True,
+        default='',
+        help_text='Storage ref for the banner image; must live under the public/ zone',
+    )
+    audience = models.CharField(
+        max_length=32,
+        choices=EmailCampaignAudience.choices,
+        default=EmailCampaignAudience.ALL_USERS,
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=EmailCampaignStatus.choices,
+        default=EmailCampaignStatus.DRAFT,
+        db_index=True,
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='email_campaigns',
+    )
+    batch = models.ForeignKey(
+        NotificationBatch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='email_campaigns',
+        help_text='Set when the campaign is sent; source of truth for delivery counts',
+    )
+    sent_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'EmailCampaign'
+        verbose_name = 'Email campaign'
+        verbose_name_plural = 'Email campaigns'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['status', 'created_at'], name='email_campaign_status_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.title} ({self.status})'
 
 
 class EmailSuppression(models.Model):
