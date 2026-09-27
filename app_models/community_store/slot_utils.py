@@ -138,25 +138,10 @@ def list_meeting_slots_for_product_public(
     if not windows:
         return []
 
-    from app_models.community_store.models import StoreProductSlotHold, StoreProductSlotHoldStatus, StorePurchase
+    from app_models.community_store.conference import expire_stale_pending_purchases, seat_count_for_slot
 
-    occupied: List[datetime] = []
-    occupied.extend(
-        StorePurchase.objects.filter(
-            product_id=product.id,
-            status__in=[StorePurchase.STATUS_COMPLETED, StorePurchase.STATUS_PENDING],
-            booked_slot_start_utc__isnull=False,
-        ).values_list('booked_slot_start_utc', flat=True)
-    )
-    occupied.extend(
-        StoreProductSlotHold.objects.filter(
-            store_product_id=product.id,
-            status=StoreProductSlotHoldStatus.PENDING,
-            hold_until__gt=now_utc,
-        ).values_list('slot_start_utc', flat=True)
-    )
-
-    occ_set = {normalize_utc_start(x) for x in occupied}
+    expire_stale_pending_purchases(product.id, now=now_utc)
+    max_att = int(getattr(settings, 'max_attendees', 1) or 0)
 
     intervals = generate_meeting_slot_intervals(
         time_zone=settings.time_zone,
@@ -168,7 +153,7 @@ def list_meeting_slots_for_product_public(
         range_start=range_start,
         range_end=range_end,
         now_utc=now_utc,
-        occupied_starts_utc=occupied,
+        occupied_starts_utc=None,
         max_slots=max_slots,
         filter_by_occupied=False,
     )
@@ -184,13 +169,21 @@ def list_meeting_slots_for_product_public(
         local = start_utc.astimezone(disp_tz)
         label = local.strftime('%a %d %b %Y, %H:%M')
         su = normalize_utc_start(start_utc)
-        available = su not in occ_set
+        taken = seat_count_for_slot(product.id, su, now=now_utc)
+        if max_att == 0:
+            available = True
+            remaining = None
+        else:
+            remaining = max(0, max_att - taken)
+            available = remaining > 0
         out.append(
             {
                 'start': start_utc.isoformat().replace('+00:00', 'Z'),
                 'end': end_utc.isoformat().replace('+00:00', 'Z'),
                 'label': label,
                 'available': available,
+                'seats_taken': taken,
+                'seats_remaining': remaining,
             }
         )
     return out
@@ -201,14 +194,14 @@ def validate_booked_slot_start_for_checkout(product, slot_start_utc: datetime, *
     Return (ok, error_message). ``error_message`` is empty when ``ok``.
 
     Ensures the instant is on the owner's availability grid for that local day, respects
-    minimum notice, and does not collide with completed/pending purchases or active holds.
+    minimum notice, and has remaining capacity.
     """
+    from app_models.community_store.conference import expire_stale_pending_purchases, slot_is_full
     from app_models.community_store.models import (
+        ConferenceConnectionStatus,
+        ConferenceProvider,
         StoreBookableMeetingSettings,
         StoreProductKind,
-        StoreProductSlotHold,
-        StoreProductSlotHoldStatus,
-        StorePurchase,
     )
 
     now_utc = now_utc or timezone.now()
@@ -219,6 +212,23 @@ def validate_booked_slot_start_for_checkout(product, slot_start_utc: datetime, *
         settings = product.bookable_meeting_settings
     except StoreBookableMeetingSettings.DoesNotExist:
         return False, 'This meeting does not have availability configured yet.'
+
+    source = (getattr(settings, 'room_source', None) or '').strip()
+    if source == 'manual' or not source:
+        if not (getattr(settings, 'manual_join_url', None) or '').strip():
+            return False, 'This meeting needs a join URL before it can be booked.'
+    elif source in (ConferenceProvider.GOOGLE_MEET, ConferenceProvider.ZOOM):
+        community = product.store.community
+        from app_models.community_store.models import CommunityConferenceConnection
+
+        if not CommunityConferenceConnection.objects.filter(
+            community=community,
+            provider=source,
+            status=ConferenceConnectionStatus.ACTIVE,
+        ).exists():
+            return False, 'The host needs to reconnect Google Meet or Zoom before this time can be booked.'
+    else:
+        return False, 'Choose a join URL or a connected Google Meet / Zoom account before selling times.'
 
     windows = _windows_as_tuples(settings.windows)
     if not windows:
@@ -234,21 +244,7 @@ def validate_booked_slot_start_for_checkout(product, slot_start_utc: datetime, *
     local = ss.astimezone(tz)
     day = local.date()
 
-    occupied: List[datetime] = []
-    occupied.extend(
-        StorePurchase.objects.filter(
-            product_id=product.id,
-            status__in=[StorePurchase.STATUS_COMPLETED, StorePurchase.STATUS_PENDING],
-            booked_slot_start_utc__isnull=False,
-        ).values_list('booked_slot_start_utc', flat=True)
-    )
-    occupied.extend(
-        StoreProductSlotHold.objects.filter(
-            store_product_id=product.id,
-            status=StoreProductSlotHoldStatus.PENDING,
-            hold_until__gt=now_utc,
-        ).values_list('slot_start_utc', flat=True)
-    )
+    expire_stale_pending_purchases(product.id, now=now_utc)
 
     intervals = generate_meeting_slot_intervals(
         time_zone=settings.time_zone,
@@ -260,10 +256,17 @@ def validate_booked_slot_start_for_checkout(product, slot_start_utc: datetime, *
         range_start=day,
         range_end=day,
         now_utc=now_utc,
-        occupied_starts_utc=occupied,
+        occupied_starts_utc=None,
         max_slots=2000,
+        filter_by_occupied=False,
     )
-    for start_utc, _end in intervals:
+    matched_end = None
+    for start_utc, end_utc in intervals:
         if normalize_utc_start(start_utc) == ss:
-            return True, ''
-    return False, 'That time is not available. Choose another slot from the list.'
+            matched_end = end_utc
+            break
+    if matched_end is None:
+        return False, 'That time is not available. Choose another slot from the list.'
+    if slot_is_full(settings, product.id, ss, now=now_utc):
+        return False, 'That time is full. Choose another slot from the list.'
+    return True, ''

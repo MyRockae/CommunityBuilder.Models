@@ -3,6 +3,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from app_models.community.models import Community, CommunityGroup
 from app_models.account.models import User
+from app_models.community_store.models import ConferenceRoomSource
 
 
 class MeetingSeries(models.Model):
@@ -45,6 +46,12 @@ class MeetingSeries(models.Model):
         null=True,
         help_text='Virtual meeting URL (Zoom, Google Meet, etc.)',
     )
+    room_source = models.CharField(
+        max_length=20,
+        choices=ConferenceRoomSource.choices,
+        default=ConferenceRoomSource.MANUAL,
+    )
+    provider_meeting_id = models.CharField(max_length=255, blank=True, default='')
     time_zone = models.CharField(
         max_length=64,
         default='UTC',
@@ -179,6 +186,12 @@ class Meeting(models.Model):
     end_datetime = models.DateTimeField(help_text='End date and time')
     location = models.CharField(max_length=500, blank=True, null=True, help_text='Physical meeting location')
     meeting_url = models.URLField(blank=True, null=True, help_text='Virtual meeting URL (Zoom, Google Meet, etc.)')
+    room_source = models.CharField(
+        max_length=20,
+        choices=ConferenceRoomSource.choices,
+        default=ConferenceRoomSource.MANUAL,
+    )
+    provider_meeting_id = models.CharField(max_length=255, blank=True, default='')
     created_by = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_meetings')
     series = models.ForeignKey(
         MeetingSeries,

@@ -50,6 +50,75 @@ class StoreProductKind(models.TextChoices):
     MEETING = 'meeting', 'Bookable meeting'
 
 
+class ConferenceProvider(models.TextChoices):
+    GOOGLE_MEET = 'google_meet', 'Google Meet'
+    ZOOM = 'zoom', 'Zoom'
+
+
+class ConferenceRoomSource(models.TextChoices):
+    MANUAL = 'manual', 'Provide URL manually'
+    GOOGLE_MEET = 'google_meet', 'Google Meet'
+    ZOOM = 'zoom', 'Zoom'
+
+
+class ConferenceConnectionStatus(models.TextChoices):
+    ACTIVE = 'active', 'Active'
+    EXPIRED = 'expired', 'Expired'
+    REVOKED = 'revoked', 'Revoked'
+
+
+class SlotConferenceStatus(models.TextChoices):
+    NONE = 'none', 'Not provisioned'
+    READY = 'ready', 'Ready'
+    FAILED = 'failed', 'Failed'
+
+
+class CommunityConferenceConnection(models.Model):
+    """Owner-connected Google Meet or Zoom account for a community (one row per provider)."""
+
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='conference_connections',
+    )
+    provider = models.CharField(max_length=20, choices=ConferenceProvider.choices)
+    connected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='community_conference_connections',
+    )
+    account_email = models.EmailField(blank=True, default='')
+    provider_user_id = models.CharField(max_length=255, blank=True, default='')
+    refresh_token_encrypted = models.TextField(blank=True, default='')
+    access_token_encrypted = models.TextField(blank=True, default='')
+    access_token_expires_at = models.DateTimeField(null=True, blank=True)
+    scopes = models.TextField(blank=True, default='')
+    status = models.CharField(
+        max_length=20,
+        choices=ConferenceConnectionStatus.choices,
+        default=ConferenceConnectionStatus.ACTIVE,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CommunityConferenceConnection'
+        verbose_name = 'Community conference connection'
+        verbose_name_plural = 'Community conference connections'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['community', 'provider'],
+                name='communityconference_unique_community_provider',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.community_id} {self.provider} ({self.status})'
+
+
 class StoreProduct(models.Model):
     """A digital product listed in a community store (file, external link, or bookable meeting)."""
 
@@ -229,6 +298,21 @@ class StoreBookableMeetingSettings(models.Model):
         default=120,
         help_text='Do not offer slots starting sooner than this many minutes from now',
     )
+    max_attendees = models.PositiveIntegerField(
+        default=1,
+        help_text='People per session. 1 = exclusive, N = capped group, 0 = unlimited.',
+    )
+    room_source = models.CharField(
+        max_length=20,
+        choices=ConferenceRoomSource.choices,
+        default=ConferenceRoomSource.MANUAL,
+        help_text='manual (paste URL), google_meet, or zoom',
+    )
+    manual_join_url = models.URLField(
+        blank=True,
+        null=True,
+        help_text='Join URL reused for every slot when room_source is manual',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -281,6 +365,58 @@ class StoreOwnerAvailabilityWindow(models.Model):
 
     def __str__(self):
         return f'{self.settings_id} weekday={self.weekday} {self.local_start}-{self.local_end}'
+
+
+class StoreSlotSession(models.Model):
+    """One occurrence of a bookable product time: capacity room + shared join URL."""
+
+    store_product = models.ForeignKey(
+        StoreProduct,
+        on_delete=models.CASCADE,
+        related_name='slot_sessions',
+    )
+    slot_start_utc = models.DateTimeField(db_index=True)
+    slot_end_utc = models.DateTimeField()
+    conference_provider = models.CharField(
+        max_length=20,
+        choices=ConferenceProvider.choices,
+        blank=True,
+        default='',
+    )
+    max_attendees_snapshot = models.PositiveIntegerField(default=1)
+    join_url = models.URLField(blank=True, default='')
+    host_start_url = models.URLField(blank=True, default='')
+    provider_meeting_id = models.CharField(max_length=255, blank=True, default='')
+    ics_uid = models.CharField(max_length=255, blank=True, default='')
+    ics_sequence = models.PositiveIntegerField(default=0)
+    conference_status = models.CharField(
+        max_length=20,
+        choices=SlotConferenceStatus.choices,
+        default=SlotConferenceStatus.NONE,
+        db_index=True,
+    )
+    conference_error = models.TextField(blank=True, default='')
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'StoreSlotSession'
+        verbose_name = 'Store slot session'
+        verbose_name_plural = 'Store slot sessions'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['store_product', 'slot_start_utc'],
+                name='storeslotsession_unique_product_start',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['store_product', 'slot_start_utc']),
+            models.Index(fields=['conference_status']),
+        ]
+
+    def __str__(self):
+        return f'Session {self.store_product_id} {self.slot_start_utc}'
 
 
 class StoreProductSlotHoldStatus(models.TextChoices):
@@ -337,9 +473,9 @@ class StoreProductSlotHold(models.Model):
         verbose_name_plural = 'Store product slot holds'
         constraints = [
             models.UniqueConstraint(
-                fields=['store_product', 'slot_start_utc'],
+                fields=['store_product', 'slot_start_utc', 'buyer_user'],
                 condition=models.Q(status=StoreProductSlotHoldStatus.PENDING),
-                name='store_slothold_unique_pending_slot',
+                name='store_slothold_unique_pending_slot_buyer',
             ),
         ]
         indexes = [
@@ -382,7 +518,15 @@ class StorePurchase(models.Model):
         User,
         on_delete=models.PROTECT,
         related_name='store_purchases',
-        help_text='Logged-in buyer',
+        null=True,
+        blank=True,
+        help_text='Logged-in buyer; null for guest checkout',
+    )
+    buyer_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Display name collected at checkout',
     )
     status = models.CharField(
         max_length=20,
@@ -453,8 +597,24 @@ class StorePurchase(models.Model):
         null=True,
         blank=True,
         related_name='store_purchases',
-        help_text='Meeting created or linked after successful payment for meeting products',
+        help_text='Legacy: meeting created or linked after payment',
     )
+    slot_session = models.ForeignKey(
+        'StoreSlotSession',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='purchases',
+        help_text='Bookable occurrence this purchase reserved',
+    )
+    checkout_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When a pending meeting checkout stops occupying a seat',
+    )
+    buyer_fulfillment_emailed_at = models.DateTimeField(null=True, blank=True)
+    host_notified_at = models.DateTimeField(null=True, blank=True)
+    calendar_invited_at = models.DateTimeField(null=True, blank=True)
     purchased_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -476,6 +636,8 @@ class StorePurchase(models.Model):
             models.Index(fields=['paystack_transaction_reference']),
             models.Index(fields=['payment_gateway']),
             models.Index(fields=['booked_slot_start_utc']),
+            models.Index(fields=['slot_session']),
+            models.Index(fields=['checkout_expires_at']),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -497,6 +659,50 @@ class StorePurchase(models.Model):
 
     def __str__(self):
         return f"{self.buyer_email} – {self.product.name} ({self.status})"
+
+
+class StoreGuestEmailChallenge(models.Model):
+    """6-digit inbox proof before guest store checkout. Raw code is never stored."""
+
+    email = models.EmailField(db_index=True)
+    buyer_name = models.CharField(max_length=255, blank=True, default='')
+    code_hash = models.CharField(max_length=128)
+    expires_at = models.DateTimeField()
+    attempt_count = models.PositiveSmallIntegerField(default=0)
+    consumed_at = models.DateTimeField(null=True, blank=True)
+    last_sent_at = models.DateTimeField(null=True, blank=True)
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='store_guest_email_challenges',
+    )
+    product = models.ForeignKey(
+        StoreProduct,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='guest_email_challenges',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'StoreGuestEmailChallenge'
+        verbose_name = 'Store guest email challenge'
+        verbose_name_plural = 'Store guest email challenges'
+        indexes = [
+            models.Index(fields=['email', 'expires_at']),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.email:
+            self.email = self.email.strip().lower()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f'OTP {self.email} expires {self.expires_at}'
 
 
 class StoreDownloadToken(models.Model):

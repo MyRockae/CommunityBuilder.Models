@@ -7,6 +7,7 @@ from django.db import models
 from app_models.account.models import User
 from app_models.app_payments.models import PaymentGateway
 from app_models.community.models import Community
+from app_models.community_store.models import ConferenceRoomSource
 
 
 class CommunityEventVenueType(models.TextChoices):
@@ -36,6 +37,13 @@ class CommunityEvent(models.Model):
         default=CommunityEventVenueType.REMOTE,
     )
     remote_join_url = models.URLField(blank=True, null=True, help_text="Remote meeting URL")
+    room_source = models.CharField(
+        max_length=20,
+        choices=ConferenceRoomSource.choices,
+        default=ConferenceRoomSource.MANUAL,
+        help_text="manual, google_meet, or zoom",
+    )
+    provider_meeting_id = models.CharField(max_length=255, blank=True, default="")
 
     # Physical venue (required when venue_type=physical)
     address_line_1 = models.CharField(max_length=255, blank=True, null=True)
@@ -104,8 +112,9 @@ class CommunityEvent(models.Model):
                 raise ValidationError({"remote_join_url": "Remote URL must be empty for physical events."})
 
         if self.venue_type == CommunityEventVenueType.REMOTE:
-            if not (self.remote_join_url or "").strip():
-                raise ValidationError({"remote_join_url": "Remote URL is required for remote events."})
+            source = (self.room_source or ConferenceRoomSource.MANUAL).strip()
+            if source == ConferenceRoomSource.MANUAL and not (self.remote_join_url or "").strip():
+                raise ValidationError({"remote_join_url": "Remote URL is required when providing a link manually."})
             for field in ("address_line_1", "address_line_2", "city", "state_region", "postal_code", "country_code"):
                 if (getattr(self, field, None) or "").strip():
                     raise ValidationError({field: "Address fields must be empty for remote events."})

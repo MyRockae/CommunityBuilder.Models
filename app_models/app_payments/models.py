@@ -213,7 +213,9 @@ class PaymentCheckoutSession(models.Model):
         User,
         on_delete=models.CASCADE,
         related_name='payment_checkout_sessions',
-        help_text='Buyer who may redeem this session (must match authenticated user on exchange)',
+        null=True,
+        blank=True,
+        help_text='Buyer who may redeem this session; null for guest store checkout',
     )
     session_kind = models.CharField(
         max_length=50,
