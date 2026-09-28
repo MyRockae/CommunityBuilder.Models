@@ -9,8 +9,8 @@ class StorageUsage(models.Model):
     FILE_TYPE_CHOICES = [
         ('avatar', 'Avatar'),
         ('banner', 'Banner'),
-        ('classroom_content', 'Classroom Content'),
-        ('classroom_attachment', 'Classroom Attachment'),
+        ('course_content', 'Course Content'),
+        ('course_attachment', 'Course Attachment'),
         ('forum_attachment', 'Forum Attachment'),
         ('post_attachment', 'Post Attachment'),
         ('quiz_file', 'Quiz File'),
@@ -36,7 +36,7 @@ class StorageUsage(models.Model):
     file_path = models.CharField(max_length=500, help_text='Object storage key')
     file_size = models.BigIntegerField(help_text='File size in bytes')
     file_type = models.CharField(max_length=50, choices=FILE_TYPE_CHOICES, default='other')
-    parent_entity_type = models.CharField(max_length=100, null=True, blank=True, help_text='Type of parent entity (e.g. Classroom, Post)')
+    parent_entity_type = models.CharField(max_length=100, null=True, blank=True, help_text='Type of parent entity (e.g. Course, Post)')
     parent_entity_id = models.PositiveBigIntegerField(null=True, blank=True, help_text='ID of the parent entity')
     created_at = models.DateTimeField(auto_now_add=True)
 

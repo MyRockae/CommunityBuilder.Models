@@ -8,7 +8,7 @@ class NotificationEvent(models.TextChoices):
     TOWN_HALL_POST = 'town_hall_post', 'Town hall post'
     FORUM_POST = 'forum_post', 'Forum post'
     BLOG_POST = 'blog_post', 'Blog post'
-    CLASSROOM_PUBLISHED = 'classroom_published', 'Classroom published'
+    COURSE_PUBLISHED = 'course_published', 'Course published'
     INACTIVE_USER = 'inactive_user', 'Inactive user'
     VIEWS_MOMENTUM = 'views_momentum', 'Community views momentum'
     MARKETING_CAMPAIGN = 'marketing_campaign', 'Marketing campaign'
@@ -50,7 +50,7 @@ class NotificationBatch(models.Model):
     object_id = models.BigIntegerField(
         null=True,
         blank=True,
-        help_text='Primary key of the triggering object (post, blog post, classroom); null for platform-wide scans',
+        help_text='Primary key of the triggering object (post, blog post, course); null for platform-wide scans',
     )
     actor = models.ForeignKey(
         User,

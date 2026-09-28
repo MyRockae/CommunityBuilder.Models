@@ -82,8 +82,8 @@ Imports: `from app_models.<app>.models import …`
 | `user_profile` | UserProfile (name, bio, interests, avatar, etc.) |
 | `shared` | Tag, custom API exceptions |
 | `community` | Community, CommunityMember, CommunityLike, CommunityView, CommunityGroup, **CommunityGroupPrice**, CommunityGroupAccess, CommunityBadgeDefinition, CommunityMemberBadge |
-| `community_classroom` | Classroom (courses; payment plans, is_published, certificates) |
-| `community_classroom_content` | ClassroomContent, ClassroomAttachment, ClassroomContentCompletion, ClassroomCertificate |
+| `community_course` | Course (tiers, is_published, certificates) |
+| `community_course_content` | CourseLessonPlacement, LessonDefinition, CourseCertificate |
 | `community_forum` | Forum, Post, PostAttachment, PostLike |
 | `community_blog` | CommunityBlogPost, CommunityBlogPostReply |
 | `blog` | BlogPost (platform-wide) |
@@ -123,7 +123,7 @@ After installation, import models from the `app_models` namespace:
 ```python
 from app_models.account.models import User
 from app_models.community.models import Community, CommunityMember
-from app_models.community_classroom.models import Classroom
+from app_models.community_course.models import Course
 # etc.
 ```
 
@@ -147,7 +147,7 @@ SELECT v.app, v.name, NOW() FROM (VALUES
   ('community_quiz', '0002_alter_quiz_payment_plans'),
   ('community_resource', '0006_alter_resource_payment_plans'),
   ('community_forum', '0003_alter_forum_payment_plans'),
-  ('community_classroom', '0003_alter_classroom_payment_plans'),
+  ('community_course', '0003_alter_classroom_payment_plans'),
   ('community_meetings', '0003_alter_meeting_payment_plans'),
   ('app_subscription', '0003_rename_community_group_fields')
 ) AS v(app, name)

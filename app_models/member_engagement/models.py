@@ -4,7 +4,7 @@ from django.db import models
 
 from app_models.account.models import User
 from app_models.community.models import Community
-from app_models.community_classroom.models import Classroom
+from app_models.community_course.models import Course
 
 
 class EngagementSession(models.Model):
@@ -17,13 +17,13 @@ class EngagementSession(models.Model):
         on_delete=models.CASCADE,
         related_name='engagement_sessions',
     )
-    classroom = models.ForeignKey(
-        Classroom,
+    course = models.ForeignKey(
+        Course,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name='engagement_sessions',
-        help_text='Classroom context when tracking classroom surfaces; null for community-only events.',
+        help_text='Course context when tracking course surfaces; null for community-only events.',
     )
     client_session_key = models.CharField(
         max_length=64,
@@ -44,7 +44,7 @@ class EngagementSession(models.Model):
             ),
         ]
         indexes = [
-            models.Index(fields=['community', 'classroom', '-last_seen_at'], name='engsess_comm_cl_last_idx'),
+            models.Index(fields=['community', 'course', '-last_seen_at'], name='engsess_comm_cl_last_idx'),
             models.Index(fields=['user', '-last_seen_at'], name='engsess_user_last_idx'),
         ]
 
@@ -56,7 +56,7 @@ class EngagementEvent(models.Model):
     """Append-only engagement event row (retries use idempotency_key)."""
 
     class Surface(models.TextChoices):
-        CLASSROOM_HOME = 'classroom_home', 'Classroom home'
+        COURSE_HOME = 'course_home', 'Course home'
         LESSON = 'lesson', 'Lesson'
         CONTENT = 'content', 'Content'
         MATERIAL = 'material', 'Material'

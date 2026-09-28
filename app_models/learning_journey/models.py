@@ -6,7 +6,7 @@ from django.db.models import Q, F
 
 from app_models.account.models import User
 from app_models.community.models import Community, CommunityMember
-from app_models.community_classroom.models import Classroom, ClassroomCollection
+from app_models.community_course.models import Course, CourseBundle
 
 
 def _edge_no_self_loop_constraint():
@@ -21,10 +21,10 @@ def _edge_no_self_loop_constraint():
 
 
 def _node_target_xor_constraint():
-    """Exactly one of classroom_collection or classroom must be set."""
+    """Exactly one of course_bundle or course must be set."""
     q = (
-        Q(classroom_collection__isnull=False, classroom__isnull=True)
-        | Q(classroom_collection__isnull=True, classroom__isnull=False)
+        Q(course_bundle__isnull=False, course__isnull=True)
+        | Q(course_bundle__isnull=True, course__isnull=False)
     )
     if django.VERSION >= (5, 0):
         return models.CheckConstraint(condition=q, name='learning_journey_node_target_xor')
@@ -32,7 +32,7 @@ def _node_target_xor_constraint():
 
 
 class LearningJourney(models.Model):
-    """Community-defined directed graph of course bundles (classroom collections) for guided paths."""
+    """Community-defined directed graph of course bundles for guided paths."""
 
     community = models.ForeignKey(
         Community,
@@ -70,28 +70,28 @@ class LearningJourney(models.Model):
 
 
 class LearningJourneyNode(models.Model):
-    """One journey stage: either a classroom collection (bundle) or a single classroom."""
+    """One journey stage: either a course bundle or a single course."""
 
     journey = models.ForeignKey(
         LearningJourney,
         on_delete=models.CASCADE,
         related_name='nodes',
     )
-    classroom_collection = models.ForeignKey(
-        ClassroomCollection,
+    course_bundle = models.ForeignKey(
+        CourseBundle,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name='learning_journey_nodes',
-        help_text='Course bundle for this stage (mutually exclusive with classroom)',
+        help_text='Course bundle for this stage (mutually exclusive with course)',
     )
-    classroom = models.ForeignKey(
-        Classroom,
+    course = models.ForeignKey(
+        Course,
         on_delete=models.CASCADE,
         null=True,
         blank=True,
         related_name='learning_journey_nodes',
-        help_text='Single classroom for this stage (mutually exclusive with classroom_collection)',
+        help_text='Single course for this stage (mutually exclusive with course_bundle)',
     )
     offerings = models.JSONField(
         default=dict,
@@ -121,14 +121,14 @@ class LearningJourneyNode(models.Model):
         constraints = [
             _node_target_xor_constraint(),
             models.UniqueConstraint(
-                fields=['journey', 'classroom_collection'],
-                condition=Q(classroom_collection__isnull=False),
-                name='uniq_ljnode_journey_collection',
+                fields=['journey', 'course_bundle'],
+                condition=Q(course_bundle__isnull=False),
+                name='uniq_ljnode_journey_bundle',
             ),
             models.UniqueConstraint(
-                fields=['journey', 'classroom'],
-                condition=Q(classroom__isnull=False),
-                name='uniq_ljnode_journey_classroom',
+                fields=['journey', 'course'],
+                condition=Q(course__isnull=False),
+                name='uniq_ljnode_journey_course',
             ),
         ]
         indexes = [
@@ -136,9 +136,9 @@ class LearningJourneyNode(models.Model):
         ]
 
     def __str__(self):
-        if self.classroom_collection_id:
-            return f'{self.journey_id}: collection {self.classroom_collection_id}'
-        return f'{self.journey_id}: classroom {self.classroom_id}'
+        if self.course_bundle_id:
+            return f'{self.journey_id}: bundle {self.course_bundle_id}'
+        return f'{self.journey_id}: course {self.course_id}'
 
 
 class LearningJourneyEdge(models.Model):

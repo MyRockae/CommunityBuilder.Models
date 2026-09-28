@@ -22,7 +22,7 @@ class Migration(migrations.Migration):
     dependencies = [
         ('account', '0002_roles_permissions_and_user_roles'),
         ('community', '0024_remove_communitygroup_legacy_billing_flags'),
-        ('community_classroom', '0010_dense_classroom_collection_item_order'),
+        ('community_course', '0010_dense_classroom_collection_item_order'),
     ]
 
     operations = [
@@ -82,7 +82,7 @@ class Migration(migrations.Migration):
                         help_text='Course bundle represented by this node',
                         on_delete=django.db.models.deletion.CASCADE,
                         related_name='learning_journey_nodes',
-                        to='community_classroom.classroomcollection',
+                        to='community_course.classroomcollection',
                     ),
                 ),
                 (

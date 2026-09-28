@@ -18,7 +18,7 @@ LIMIT_KEYS = frozenset(
         "max_paid_community_groups",
         "max_quiz_generations_per_month",
         "max_forums",
-        "max_classrooms",
+        "max_courses",
         "max_resources",
         "storage_limit_gb",
     }

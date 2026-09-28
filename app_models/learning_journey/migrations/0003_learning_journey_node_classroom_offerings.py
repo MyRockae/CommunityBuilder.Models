@@ -8,7 +8,7 @@ from django.db.models import Q
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('community_classroom', '0010_dense_classroom_collection_item_order'),
+        ('community_course', '0010_dense_classroom_collection_item_order'),
         ('learning_journey', '0002_rename_learningjourney_community_idx_learningjou_communi_96deef_idx_and_more'),
     ]
 
@@ -26,7 +26,7 @@ class Migration(migrations.Migration):
                 null=True,
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name='learning_journey_nodes',
-                to='community_classroom.classroom',
+                to='community_course.classroom',
             ),
         ),
         migrations.AddField(
@@ -47,7 +47,7 @@ class Migration(migrations.Migration):
                 null=True,
                 on_delete=django.db.models.deletion.CASCADE,
                 related_name='learning_journey_nodes',
-                to='community_classroom.classroomcollection',
+                to='community_course.classroomcollection',
             ),
         ),
         migrations.AddConstraint(

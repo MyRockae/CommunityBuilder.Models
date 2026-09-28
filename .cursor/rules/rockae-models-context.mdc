@@ -39,7 +39,7 @@ Payments: `app_models.app_payments`. Subscriptions: `app_models.app_subscription
 | `app_models/community/` | Communities, members, groups, access |
 | `app_models/app_payments/` | Gateways, transactions, creator payout |
 | `app_models/app_subscription/` | App tiers, member subscriptions |
-| `app_models/community_*` | Forums, classrooms, chat, store, events, … |
+| `app_models/community_*` | Forums, courses, chat, store, events, … |
 | `app_models/learning_journey/` | Journey nodes |
 | `app_models/member_engagement/` | Pulse / engagement rows |
 | `pyproject.toml` | Package metadata |

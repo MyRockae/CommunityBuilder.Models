@@ -11,8 +11,10 @@ app_models/account/models.py
 app_models/account/migrations/0001_initial.py
 app_models/account/migrations/0002_roles_permissions_and_user_roles.py
 app_models/account/migrations/0003_user_verification_email_send_tracking.py
+app_models/account/migrations/0004_user_token_version.py
 app_models/account/migrations/__init__.py
 app_models/app_payments/__init__.py
+app_models/app_payments/buyer_routing.py
 app_models/app_payments/models.py
 app_models/app_payments/migrations/0001_initial.py
 app_models/app_payments/migrations/0002_payoutprofile.py
@@ -22,6 +24,7 @@ app_models/app_payments/migrations/0005_paymentcheckoutsession.py
 app_models/app_payments/migrations/0006_rename_paymentcheck_user_stat_exp_idx_paymentchec_user_id_3cb72e_idx_and_more.py
 app_models/app_payments/migrations/0007_event_registration_subjects.py
 app_models/app_payments/migrations/0008_rename_paymenttran_event_r_6194a6_idx_paymenttran_event_r_9ed163_idx.py
+app_models/app_payments/migrations/0009_userfiscalprofile.py
 app_models/app_payments/migrations/__init__.py
 app_models/app_subscription/__init__.py
 app_models/app_subscription/entitlements.py
@@ -44,6 +47,8 @@ app_models/app_subscription/migrations/0015_alter_appsubscriptiontier_options.py
 app_models/app_subscription/migrations/0016_apptierdiscountcode_and_more.py
 app_models/app_subscription/migrations/0017_appsubscriptiontier_entitlements.py
 app_models/app_subscription/migrations/0018_seed_has_adaptive_video_entitlement.py
+app_models/app_subscription/migrations/0019_communitymembersubscription_is_trial.py
+app_models/app_subscription/migrations/0020_pop_has_adaptive_video_entitlement.py
 app_models/app_subscription/migrations/__init__.py
 app_models/badges/__init__.py
 app_models/badges/models.py
@@ -53,6 +58,11 @@ app_models/blog/__init__.py
 app_models/blog/models.py
 app_models/blog/migrations/0001_initial.py
 app_models/blog/migrations/__init__.py
+app_models/bulk_notification/__init__.py
+app_models/bulk_notification/models.py
+app_models/bulk_notification/migrations/0001_initial.py
+app_models/bulk_notification/migrations/0002_email_campaign_and_platform_preference.py
+app_models/bulk_notification/migrations/__init__.py
 app_models/community/__init__.py
 app_models/community/models.py
 app_models/community/migrations/0001_initial.py
@@ -81,6 +91,12 @@ app_models/community/migrations/0022_rename_cgjoinreq_grp_status_idx_communitygr
 app_models/community/migrations/0023_communitygroup_billing_period_custom_window.py
 app_models/community/migrations/0024_remove_communitygroup_legacy_billing_flags.py
 app_models/community/migrations/0025_leaderboard_point_award_and_chat_counter.py
+app_models/community/migrations/0026_communitygroup_trial_days.py
+app_models/community/migrations/0027_featuredcommunity.py
+app_models/community/migrations/0028_alter_communitymember_leaderboard_year.py
+app_models/community/migrations/0028_alter_featuredcommunity_featured_image_url.py
+app_models/community/migrations/0029_merge_20260802_1139.py
+app_models/community/migrations/0030_community_bunny_collection_id.py
 app_models/community/migrations/__init__.py
 app_models/community_abuse_report/__init__.py
 app_models/community_abuse_report/models.py
@@ -90,6 +106,7 @@ app_models/community_abuse_report/migrations/__init__.py
 app_models/community_blog/__init__.py
 app_models/community_blog/models.py
 app_models/community_blog/migrations/0001_initial.py
+app_models/community_blog/migrations/0002_communityblogpost_is_published.py
 app_models/community_blog/migrations/__init__.py
 app_models/community_chat/__init__.py
 app_models/community_chat/models.py
@@ -121,6 +138,10 @@ app_models/community_classroom_content/migrations/0008_lesson_definitions_and_re
 app_models/community_classroom_content/migrations/0009_alter_classroomlessonplacement_options_and_more.py
 app_models/community_classroom_content/migrations/0010_lessondefinition_video_fields.py
 app_models/community_classroom_content/migrations/0011_classroomlessonplacement_is_intro.py
+app_models/community_classroom_content/migrations/0012_lessondefinition_bunny_video_id_and_more.py
+app_models/community_classroom_content/migrations/0013_remove_lessondefinition_legacy_video_fields.py
+app_models/community_classroom_content/migrations/0014_lessondefinition_bunny_thumbnail_file_name.py
+app_models/community_classroom_content/migrations/0015_rename_is_intro_to_is_preview.py
 app_models/community_classroom_content/migrations/__init__.py
 app_models/community_event/__init__.py
 app_models/community_event/models.py
@@ -161,6 +182,7 @@ app_models/community_polls/migrations/0001_initial.py
 app_models/community_polls/migrations/0002_alter_poll_payment_plans.py
 app_models/community_polls/migrations/0003_rename_poll_payment_plans_m2m_column.py
 app_models/community_polls/migrations/0004_rename_payment_plans_m2m_to_community_groups.py
+app_models/community_polls/migrations/0005_poll_voting_settings.py
 app_models/community_polls/migrations/__init__.py
 app_models/community_publicfeeds/__init__.py
 app_models/community_publicfeeds/models.py
@@ -185,6 +207,9 @@ app_models/community_resource/migrations/0005_resourcecontent_order_resource_typ
 app_models/community_resource/migrations/0006_alter_resource_payment_plans.py
 app_models/community_resource/migrations/0007_rename_payment_plans_m2m_to_community_groups.py
 app_models/community_resource/migrations/0008_resourcecontent_video_fields.py
+app_models/community_resource/migrations/0009_resourcecontent_bunny_video_id_and_more.py
+app_models/community_resource/migrations/0010_remove_resourcecontent_legacy_video_fields.py
+app_models/community_resource/migrations/0011_resourcecontent_bunny_thumbnail_file_name.py
 app_models/community_resource/migrations/__init__.py
 app_models/community_store/__init__.py
 app_models/community_store/models.py
@@ -223,6 +248,8 @@ app_models/community_wheel/migrations/0008_ajo_round_fields.py
 app_models/community_wheel/migrations/0009_alter_wheel_round_duration_days_and_more.py
 app_models/community_wheel/migrations/0010_alter_wheelhandoff_unique_together.py
 app_models/community_wheel/migrations/0011_remove_wheel_mode.py
+app_models/community_wheel/migrations/0012_wheel_community_groups_and_pause.py
+app_models/community_wheel/migrations/0013_alter_wheel_round_duration_days.py
 app_models/community_wheel/migrations/__init__.py
 app_models/learning_journey/__init__.py
 app_models/learning_journey/apps.py
@@ -249,6 +276,7 @@ app_models/shared/migrations/__init__.py
 app_models/storage_usage/__init__.py
 app_models/storage_usage/models.py
 app_models/storage_usage/migrations/0001_initial.py
+app_models/storage_usage/migrations/0002_alter_storageusage_file_path.py
 app_models/storage_usage/migrations/__init__.py
 app_models/user_profile/__init__.py
 app_models/user_profile/models.py
@@ -257,4 +285,5 @@ app_models/user_profile/migrations/0002_useraddress.py
 app_models/user_profile/migrations/0003_rename_useraddress_user_bill_idx_useraddress_user_id_9fdbb6_idx_and_more.py
 app_models/user_profile/migrations/0004_userprofilesociallink.py
 app_models/user_profile/migrations/0005_useraddress_address_type.py
+app_models/user_profile/migrations/0006_useraddress_country_code.py
 app_models/user_profile/migrations/__init__.py
