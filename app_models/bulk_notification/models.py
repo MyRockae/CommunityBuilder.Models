@@ -16,6 +16,7 @@ class NotificationEvent(models.TextChoices):
     POLL_CREATED = 'poll_created', 'Poll created'
     MEETING_CREATED = 'meeting_created', 'Meeting created'
     ROADMAP_PUBLISHED = 'roadmap_published', 'Roadmap published'
+    ROADMAP_UPDATED = 'roadmap_updated', 'Roadmap updated'
     JOIN_REQUEST = 'join_request', 'Join request'
     COMMUNITY_FEEDBACK = 'community_feedback', 'Community feedback'
     QUIZ_SUBMISSION = 'quiz_submission', 'Quiz submission'
