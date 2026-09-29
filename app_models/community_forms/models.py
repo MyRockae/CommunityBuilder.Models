@@ -103,12 +103,23 @@ class CommunityFormResponse(models.Model):
     definition_snapshot = models.JSONField(default=dict)
     answers = models.JSONField(default=dict)
     created_at = models.DateTimeField(auto_now_add=True)
+    enforce_one_per_user = models.BooleanField(
+        default=False,
+        help_text="Copied from the form at submit time for the partial unique constraint.",
+    )
 
     class Meta:
         db_table = "CommunityFormResponse"
         verbose_name = "Community form response"
         verbose_name_plural = "Community form responses"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["form", "user"],
+                condition=models.Q(user__isnull=False, enforce_one_per_user=True),
+                name="cform_resp_one_per_user",
+            ),
+        ]
         indexes = [
             models.Index(fields=["form", "-created_at"], name="cform_resp_form_created_idx"),
             models.Index(fields=["community", "-created_at"], name="cform_resp_comm_created_idx"),
