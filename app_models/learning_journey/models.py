@@ -3,6 +3,7 @@ import uuid
 import django
 from django.db import models
 from django.db.models import Q, F
+from django.utils import timezone
 
 from app_models.account.models import User
 from app_models.community.models import Community, CommunityMember
@@ -44,6 +45,11 @@ class LearningJourney(models.Model):
     description = models.TextField(blank=True, null=True)
     banner_url = models.URLField(blank=True, null=True)
     is_published = models.BooleanField(default=False, help_text='Visible to members when True')
+    published_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Set once when the roadmap is first published; remains set if is_published is toggled off so downstream notifications fire only once.',
+    )
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -64,6 +70,14 @@ class LearningJourney(models.Model):
             models.Index(fields=['community']),
             models.Index(fields=['community', 'is_published']),
         ]
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if self.is_published and self.published_at is None:
+            self.published_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = list({*update_fields, 'published_at'})
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.title} ({self.community_id})'
