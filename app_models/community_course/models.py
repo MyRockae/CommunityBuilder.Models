@@ -112,6 +112,15 @@ class CourseBundle(models.Model):
         null=True,
         help_text='Optional bundle-only banner URL (not derived from courses)',
     )
+    is_published = models.BooleanField(
+        default=False,
+        help_text='If True, the classroom is visible/published to members',
+    )
+    published_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Set once when the classroom is first published; remains set if is_published is toggled off so downstream notifications fire only once.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -122,7 +131,16 @@ class CourseBundle(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['community']),
+            models.Index(fields=['community', 'is_published']),
         ]
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if self.is_published and self.published_at is None:
+            self.published_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = list({*update_fields, 'published_at'})
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} ({self.community_id})"
