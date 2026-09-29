@@ -1,0 +1,55 @@
+from django.db import migrations, models
+
+
+EVENT_CHOICES = [
+    ('town_hall_post', 'Town hall post'),
+    ('forum_post', 'Forum post'),
+    ('blog_post', 'Blog post'),
+    ('course_published', 'Course published'),
+    ('resource_activated', 'Resource content activated'),
+    ('classroom_created', 'Classroom created'),
+    ('poll_created', 'Poll created'),
+    ('meeting_created', 'Meeting created'),
+    ('join_request', 'Join request'),
+    ('community_feedback', 'Community feedback'),
+    ('quiz_submission', 'Quiz submission'),
+    ('blog_reply', 'Blog reply'),
+    ('public_feed_reply', 'Public feed reply'),
+    ('form_response', 'Form response'),
+    ('inactive_user', 'Inactive user'),
+    ('views_momentum', 'Community views momentum'),
+    ('marketing_campaign', 'Marketing campaign'),
+]
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        ('bulk_notification', '0005_user_inbox_notification'),
+    ]
+
+    operations = [
+        migrations.AlterField(
+            model_name='notificationbatch',
+            name='event_type',
+            field=models.CharField(
+                choices=EVENT_CHOICES,
+                help_text='Which notification this batch represents',
+                max_length=32,
+            ),
+        ),
+        migrations.AlterField(
+            model_name='notificationdelivery',
+            name='event_type',
+            field=models.CharField(
+                choices=EVENT_CHOICES,
+                help_text='Denormalised from the batch so cooldown lookups avoid a join',
+                max_length=32,
+            ),
+        ),
+        migrations.AlterField(
+            model_name='userinboxnotification',
+            name='event_type',
+            field=models.CharField(choices=EVENT_CHOICES, max_length=32),
+        ),
+    ]

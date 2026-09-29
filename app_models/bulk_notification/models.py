@@ -18,6 +18,7 @@ class NotificationEvent(models.TextChoices):
     QUIZ_SUBMISSION = 'quiz_submission', 'Quiz submission'
     BLOG_REPLY = 'blog_reply', 'Blog reply'
     PUBLIC_FEED_REPLY = 'public_feed_reply', 'Public feed reply'
+    FORM_RESPONSE = 'form_response', 'Form response'
     INACTIVE_USER = 'inactive_user', 'Inactive user'
     VIEWS_MOMENTUM = 'views_momentum', 'Community views momentum'
     MARKETING_CAMPAIGN = 'marketing_campaign', 'Marketing campaign'
