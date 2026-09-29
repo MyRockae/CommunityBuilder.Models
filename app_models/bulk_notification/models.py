@@ -9,6 +9,15 @@ class NotificationEvent(models.TextChoices):
     FORUM_POST = 'forum_post', 'Forum post'
     BLOG_POST = 'blog_post', 'Blog post'
     COURSE_PUBLISHED = 'course_published', 'Course published'
+    RESOURCE_ACTIVATED = 'resource_activated', 'Resource content activated'
+    CLASSROOM_CREATED = 'classroom_created', 'Classroom created'
+    POLL_CREATED = 'poll_created', 'Poll created'
+    MEETING_CREATED = 'meeting_created', 'Meeting created'
+    JOIN_REQUEST = 'join_request', 'Join request'
+    COMMUNITY_FEEDBACK = 'community_feedback', 'Community feedback'
+    QUIZ_SUBMISSION = 'quiz_submission', 'Quiz submission'
+    BLOG_REPLY = 'blog_reply', 'Blog reply'
+    PUBLIC_FEED_REPLY = 'public_feed_reply', 'Public feed reply'
     INACTIVE_USER = 'inactive_user', 'Inactive user'
     VIEWS_MOMENTUM = 'views_momentum', 'Community views momentum'
     MARKETING_CAMPAIGN = 'marketing_campaign', 'Marketing campaign'
@@ -329,3 +338,71 @@ class EmailSuppression(models.Model):
 
     def __str__(self):
         return f'{self.email} ({self.reason})'
+
+
+class UserInboxNotification(models.Model):
+    """
+    Per-recipient in-app inbox row. Independent of email/Telegram delivery.
+    Dismissing or reading only affects this user.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='inbox_notifications',
+    )
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='inbox_notifications',
+    )
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='triggered_inbox_notifications',
+    )
+    batch = models.ForeignKey(
+        NotificationBatch,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='inbox_notifications',
+    )
+    event_type = models.CharField(max_length=32, choices=NotificationEvent.choices)
+    object_id = models.BigIntegerField()
+    object_type = models.CharField(max_length=32, blank=True, default='')
+    actor_name = models.CharField(max_length=255, blank=True, default='')
+    actor_avatar_ref = models.CharField(max_length=1024, blank=True, default='')
+    title = models.CharField(max_length=255, blank=True, default='')
+    excerpt = models.TextField(blank=True, default='')
+    deep_link = models.CharField(max_length=512, blank=True, default='')
+    read_at = models.DateTimeField(null=True, blank=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'UserInboxNotification'
+        verbose_name = 'User inbox notification'
+        verbose_name_plural = 'User inbox notifications'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'community', 'event_type', 'object_id'],
+                name='inbox_notif_user_event_obj_uq',
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=['user', 'community', 'deleted_at', '-created_at'],
+                name='inbox_notif_list_idx',
+            ),
+            models.Index(
+                fields=['user', 'community', 'read_at'],
+                name='inbox_notif_unread_idx',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.event_type} -> user={self.user_id} community={self.community_id}'
