@@ -38,6 +38,11 @@ class CommunityBlogPost(models.Model):
         db_index=True,
         help_text='False for TipTap media drafts; True when visible on the public blog',
     )
+    published_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Set once when the post is first published; remains set if is_published is toggled off so downstream notifications fire only once.',
+    )
     writer = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,
@@ -79,6 +84,12 @@ class CommunityBlogPost(models.Model):
                 counter += 1
 
             self.slug = slug
+
+        update_fields = kwargs.get('update_fields')
+        if self.is_published and self.published_at is None:
+            self.published_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = list({*update_fields, 'published_at'})
 
         super().save(*args, **kwargs)
 
