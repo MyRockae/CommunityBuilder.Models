@@ -131,7 +131,7 @@ class CourseBundle(models.Model):
         ordering = ['-created_at']
         indexes = [
             models.Index(fields=['community']),
-            models.Index(fields=['community', 'is_published']),
+            models.Index(fields=['community', 'is_published'], name='CourseBundl_communi_pub_idx'),
         ]
 
     def save(self, *args, **kwargs):
