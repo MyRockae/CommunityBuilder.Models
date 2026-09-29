@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from app_models.community.models import Community, CommunityGroup
 from app_models.shared.validators import slug_username_validator
 
@@ -100,6 +101,11 @@ class ResourceContent(models.Model):
         default=True,
         help_text='Whether this content is active and visible. Inactive content can be hidden from members.',
     )
+    activated_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='Set once when the content is first activated; remains set if is_active is toggled off so downstream notifications fire only once.',
+    )
     VIDEO_STATUS_NONE = 'none'
     VIDEO_STATUS_PROCESSING = 'processing'
     VIDEO_STATUS_READY = 'ready'
@@ -141,6 +147,14 @@ class ResourceContent(models.Model):
         verbose_name = 'Resource Content'
         verbose_name_plural = 'Resource Contents'
         ordering = ['order', '-created_at']
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if self.is_active and self.activated_at is None:
+            self.activated_at = timezone.now()
+            if update_fields is not None:
+                kwargs['update_fields'] = list({*update_fields, 'activated_at'})
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} - {self.resource.friendly_name}"
