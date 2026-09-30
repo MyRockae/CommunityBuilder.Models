@@ -384,6 +384,12 @@ class UserInboxNotification(models.Model):
     object_type = models.CharField(max_length=32, blank=True, default='')
     actor_name = models.CharField(max_length=255, blank=True, default='')
     actor_avatar_ref = models.CharField(max_length=1024, blank=True, default='')
+    image_ref = models.CharField(
+        max_length=1024,
+        blank=True,
+        default='',
+        help_text='Entity banner or cover for content bells; staff photo stays on actor_avatar_ref',
+    )
     title = models.CharField(max_length=255, blank=True, default='')
     excerpt = models.TextField(blank=True, default='')
     deep_link = models.CharField(max_length=512, blank=True, default='')
