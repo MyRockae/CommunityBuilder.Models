@@ -78,6 +78,16 @@ class NotificationBatch(models.Model):
         related_name='triggered_notification_batches',
         help_text='User who triggered the notification; excluded from recipients',
     )
+    payload = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Inbox copy and audience hints for BulkNotification.Service: '
+            'object_type, title, excerpt, deep_link, image_ref, actor_name, '
+            'actor_avatar_ref, audience (members|owners|explicit|scoped), '
+            'optional recipient_user_ids, group_ids, staff_roles, extra_user_ids.'
+        ),
+    )
     status = models.CharField(
         max_length=16,
         choices=NotificationBatchStatus.choices,
