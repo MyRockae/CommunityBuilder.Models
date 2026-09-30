@@ -17,6 +17,8 @@ class NotificationEvent(models.TextChoices):
     MEETING_CREATED = 'meeting_created', 'Meeting created'
     ROADMAP_PUBLISHED = 'roadmap_published', 'Roadmap published'
     ROADMAP_UPDATED = 'roadmap_updated', 'Roadmap updated'
+    GROUP_ACCESS_GRANTED = 'group_access_granted', 'Group access granted'
+    GROUP_ACCESS_REVOKED = 'group_access_revoked', 'Group access revoked'
     JOIN_REQUEST = 'join_request', 'Join request'
     COMMUNITY_FEEDBACK = 'community_feedback', 'Community feedback'
     QUIZ_SUBMISSION = 'quiz_submission', 'Quiz submission'

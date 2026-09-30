@@ -97,7 +97,7 @@ class CourseReview(models.Model):
 
 
 class CourseBundle(models.Model):
-    """Named grouping of courses within a community (no bundle-level access rules)."""
+    """Named grouping of courses within a community; access is gated by assigned groups."""
 
     community = models.ForeignKey(
         Community,
@@ -111,6 +111,12 @@ class CourseBundle(models.Model):
         blank=True,
         null=True,
         help_text='Optional bundle-only banner URL (not derived from courses)',
+    )
+    community_groups = models.ManyToManyField(
+        CommunityGroup,
+        related_name='course_bundles',
+        blank=True,
+        help_text='Community groups (tiers) that have access to this classroom',
     )
     is_published = models.BooleanField(
         default=False,
