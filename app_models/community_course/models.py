@@ -5,6 +5,13 @@ from app_models.account.models import User
 from app_models.community.models import Community, CommunityGroup
 from app_models.shared.validators import slug_username_validator
 
+
+class CoursePublicPreviewScope(models.TextChoices):
+    NONE = 'none', 'None'
+    ENTIRE = 'entire', 'Entire course'
+    PARTS = 'parts', 'Selected lessons'
+
+
 class Course(models.Model):
     """Course model for community - contains name, title, description, and banner"""
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name='courses')
@@ -21,7 +28,17 @@ class Course(models.Model):
     issue_certificate = models.BooleanField(default=False, help_text='If True, users will receive a certificate when all content in the course is completed')
     is_featured = models.BooleanField(
         default=False,
-        help_text='If True, the course may be highlighted in discovery; at most six per community may be featured.',
+        help_text='If True, the course is listed on the public featured catalog.',
+    )
+    public_preview_scope = models.CharField(
+        max_length=16,
+        choices=CoursePublicPreviewScope.choices,
+        default=CoursePublicPreviewScope.NONE,
+        help_text=(
+            'How guest preview lessons are chosen: none (not shown to visitors), '
+            'entire (every syllabus row is public), or parts (selected rows only). '
+            'New lessons inherit is_preview when this is entire.'
+        ),
     )
     is_published = models.BooleanField(default=False, help_text='If True, the course is visible/published to members')
     published_at = models.DateTimeField(
