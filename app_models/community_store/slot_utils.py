@@ -138,9 +138,8 @@ def list_meeting_slots_for_product_public(
     if not windows:
         return []
 
-    from app_models.community_store.conference import expire_stale_pending_purchases, seat_count_for_slot
+    from app_models.community_store.conference import occupancy_counts_for_starts
 
-    expire_stale_pending_purchases(product.id, now=now_utc)
     max_att = int(getattr(settings, 'max_attendees', 1) or 0)
 
     intervals = generate_meeting_slot_intervals(
@@ -164,12 +163,18 @@ def list_meeting_slots_for_product_public(
     except ZoneInfoNotFoundError:
         disp_tz = ZoneInfo('UTC')
 
+    counts = occupancy_counts_for_starts(
+        product.id,
+        [start for start, _end in intervals],
+        now=now_utc,
+    )
+
     out: List[dict] = []
     for start_utc, end_utc in intervals:
         local = start_utc.astimezone(disp_tz)
         label = local.strftime('%a %d %b %Y, %H:%M')
         su = normalize_utc_start(start_utc)
-        taken = seat_count_for_slot(product.id, su, now=now_utc)
+        taken = int(counts.get(su, 0) or 0)
         if max_att == 0:
             available = True
             remaining = None
@@ -187,6 +192,87 @@ def list_meeting_slots_for_product_public(
             }
         )
     return out
+
+
+def list_meeting_slots_from_next_available(
+    product,
+    *,
+    window_days: int = 14,
+    search_days: int = 400,
+    now_utc: Optional[datetime] = None,
+    max_slots: int = 4000,
+) -> List[dict]:
+    """Slots for a short window starting on the local date of the next bookable time."""
+    from app_models.community_store.conference import occupancy_counts_for_starts
+    from app_models.community_store.models import StoreBookableMeetingSettings, StoreProductKind
+
+    now_utc = now_utc or timezone.now()
+    window_days = max(1, min(int(window_days or 14), 31))
+    search_days = max(1, min(int(search_days or 400), 400))
+    if getattr(product, 'product_kind', None) != StoreProductKind.MEETING:
+        return []
+
+    try:
+        settings = product.bookable_meeting_settings
+    except StoreBookableMeetingSettings.DoesNotExist:
+        return []
+
+    windows = _windows_as_tuples(settings.windows)
+    if not windows:
+        return []
+
+    max_att = int(getattr(settings, 'max_attendees', 1) or 0)
+    tz_label = (settings.time_zone or 'UTC').strip() or 'UTC'
+    try:
+        disp_tz = ZoneInfo(tz_label)
+    except ZoneInfoNotFoundError:
+        disp_tz = ZoneInfo('UTC')
+
+    today = now_utc.astimezone(disp_tz).date()
+    next_day: Optional[date] = None
+    for offset in range(search_days):
+        day = today + timedelta(days=offset)
+        day_intervals = generate_meeting_slot_intervals(
+            time_zone=settings.time_zone,
+            duration_minutes=settings.duration_minutes,
+            buffer_before_minutes=settings.buffer_before_minutes,
+            buffer_after_minutes=settings.buffer_after_minutes,
+            minimum_notice_minutes=settings.minimum_notice_minutes,
+            windows=windows,
+            range_start=day,
+            range_end=day,
+            now_utc=now_utc,
+            occupied_starts_utc=None,
+            max_slots=80,
+            filter_by_occupied=False,
+        )
+        if not day_intervals:
+            continue
+        if max_att == 0:
+            next_day = day
+            break
+        counts = occupancy_counts_for_starts(
+            product.id,
+            [start for start, _end in day_intervals],
+            now=now_utc,
+        )
+        for start_utc, _end in day_intervals:
+            taken = int(counts.get(normalize_utc_start(start_utc), 0) or 0)
+            if taken < max_att:
+                next_day = day
+                break
+        if next_day is not None:
+            break
+
+    if next_day is None:
+        return []
+    return list_meeting_slots_for_product_public(
+        product,
+        range_start=next_day,
+        range_end=next_day + timedelta(days=window_days - 1),
+        now_utc=now_utc,
+        max_slots=max_slots,
+    )
 
 
 def validate_booked_slot_start_for_checkout(product, slot_start_utc: datetime, *, now_utc: Optional[datetime] = None) -> Tuple[bool, str]:

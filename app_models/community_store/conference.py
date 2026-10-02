@@ -70,6 +70,51 @@ def seat_count_for_slot(product_id, slot_start_utc, *, now=None) -> int:
     return occupying_purchases_qs(product_id, slot_start_utc, now=now).count()
 
 
+def occupancy_counts_for_starts(product_id, slot_starts_utc, *, now=None) -> dict:
+    """One grouped COUNT per start instead of a query per slot."""
+    from datetime import timezone as dt_timezone
+
+    from django.db.models import Count, Q
+
+    now = now or timezone.now()
+    starts = []
+    for raw in slot_starts_utc or ():
+        if raw is None:
+            continue
+        dt = raw
+        if timezone.is_naive(dt):
+            dt = timezone.make_aware(dt, dt_timezone.utc)
+        starts.append(dt.astimezone(dt_timezone.utc).replace(microsecond=0))
+    if not starts:
+        return {}
+    expire_stale_pending_purchases(product_id, now=now)
+    rows = (
+        StorePurchase.objects.filter(
+            product_id=product_id,
+            booked_slot_start_utc__in=starts,
+        )
+        .filter(
+            Q(status=StorePurchase.STATUS_COMPLETED)
+            | (
+                Q(status=StorePurchase.STATUS_PENDING)
+                & (Q(checkout_expires_at__isnull=True) | Q(checkout_expires_at__gt=now))
+            )
+        )
+        .values('booked_slot_start_utc')
+        .annotate(n=Count('id'))
+    )
+    out = {}
+    for row in rows:
+        key = row['booked_slot_start_utc']
+        if key is None:
+            continue
+        if timezone.is_naive(key):
+            key = timezone.make_aware(key, dt_timezone.utc)
+        key = key.astimezone(dt_timezone.utc).replace(microsecond=0)
+        out[key] = int(row['n'] or 0)
+    return out
+
+
 def slot_is_full(settings, product_id, slot_start_utc, *, now=None) -> bool:
     max_att = int(getattr(settings, 'max_attendees', 1) or 0)
     if max_att == 0:
