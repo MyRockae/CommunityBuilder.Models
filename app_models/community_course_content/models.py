@@ -210,3 +210,45 @@ class CourseCertificate(models.Model):
 
     def __str__(self):
         return f"Certificate for {self.user.email} - {self.course.name}"
+
+
+class CompanionIndexOutbox(models.Model):
+    """Durable Companion index job. Written in the same transaction as the lesson change."""
+
+    EVENT_UPSERT = 'upsert'
+    EVENT_DELETE = 'delete'
+    EVENT_CHOICES = [(EVENT_UPSERT, 'upsert'), (EVENT_DELETE, 'delete')]
+
+    STATUS_PENDING = 'pending'
+    STATUS_COMPLETE = 'complete'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'pending'),
+        (STATUS_COMPLETE, 'complete'),
+        (STATUS_FAILED, 'failed'),
+    ]
+
+    event = models.CharField(max_length=16, choices=EVENT_CHOICES)
+    community_id = models.BigIntegerField()
+    lesson_definition_id = models.BigIntegerField()
+    content_version = models.CharField(max_length=64, blank=True, default='')
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        db_index=True,
+    )
+    last_error = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'CompanionIndexOutbox'
+        ordering = ['id']
+        indexes = [
+            models.Index(fields=['status', 'created_at'], name='companion_outbox_status_idx'),
+            models.Index(fields=['lesson_definition_id', 'status'], name='companion_outbox_lesson_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.event} lesson={self.lesson_definition_id} ({self.status})'
