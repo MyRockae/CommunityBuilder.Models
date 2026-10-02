@@ -63,6 +63,26 @@ class LessonDefinition(models.Model):
         null=True,
         help_text='Last Bunny encode error when video_status is failed',
     )
+    TRANSCRIPT_STATUS_NONE = 'none'
+    TRANSCRIPT_STATUS_QUEUED = 'queued'
+    TRANSCRIPT_STATUS_READY = 'ready'
+    TRANSCRIPT_STATUS_FAILED = 'failed'
+    TRANSCRIPT_STATUS_SKIPPED = 'skipped'
+    TRANSCRIPT_STATUS_CHOICES = [
+        (TRANSCRIPT_STATUS_NONE, 'None'),
+        (TRANSCRIPT_STATUS_QUEUED, 'Queued'),
+        (TRANSCRIPT_STATUS_READY, 'Ready'),
+        (TRANSCRIPT_STATUS_FAILED, 'Failed'),
+        (TRANSCRIPT_STATUS_SKIPPED, 'Skipped'),
+    ]
+    transcript_status = models.CharField(
+        max_length=20,
+        choices=TRANSCRIPT_STATUS_CHOICES,
+        default=TRANSCRIPT_STATUS_NONE,
+        help_text='Bunny caption / Companion transcript readiness for this lesson',
+    )
+    transcript_language = models.CharField(max_length=8, blank=True, default='en')
+    transcript_error = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -71,6 +91,28 @@ class LessonDefinition(models.Model):
         verbose_name = 'Lesson Definition'
         verbose_name_plural = 'Lesson Definitions'
         ordering = ['-created_at']
+
+    def save(self, *args, **kwargs):
+        prev_guid = None
+        if self.pk:
+            prev_guid = (
+                type(self)
+                .objects.filter(pk=self.pk)
+                .values_list('bunny_video_id', flat=True)
+                .first()
+            )
+        old_guid = (prev_guid or '').strip()
+        new_guid = (self.bunny_video_id or '').strip()
+        if self.pk and old_guid != new_guid:
+            self.transcript_status = self.TRANSCRIPT_STATUS_NONE
+            self.transcript_error = None
+            if old_guid:
+                self._companion_invalidate_transcript = True
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None:
+                extra = {'transcript_status', 'transcript_error', 'updated_at'}
+                kwargs['update_fields'] = list(set(list(update_fields)) | extra)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} ({self.community_id})"
@@ -217,7 +259,12 @@ class CompanionIndexOutbox(models.Model):
 
     EVENT_UPSERT = 'upsert'
     EVENT_DELETE = 'delete'
-    EVENT_CHOICES = [(EVENT_UPSERT, 'upsert'), (EVENT_DELETE, 'delete')]
+    EVENT_INVALIDATE_TRANSCRIPT = 'invalidate_transcript'
+    EVENT_CHOICES = [
+        (EVENT_UPSERT, 'upsert'),
+        (EVENT_DELETE, 'delete'),
+        (EVENT_INVALIDATE_TRANSCRIPT, 'invalidate_transcript'),
+    ]
 
     STATUS_PENDING = 'pending'
     STATUS_COMPLETE = 'complete'
@@ -228,7 +275,7 @@ class CompanionIndexOutbox(models.Model):
         (STATUS_FAILED, 'failed'),
     ]
 
-    event = models.CharField(max_length=16, choices=EVENT_CHOICES)
+    event = models.CharField(max_length=24, choices=EVENT_CHOICES)
     community_id = models.BigIntegerField()
     lesson_definition_id = models.BigIntegerField()
     content_version = models.CharField(max_length=64, blank=True, default='')
@@ -252,3 +299,48 @@ class CompanionIndexOutbox(models.Model):
 
     def __str__(self):
         return f'{self.event} lesson={self.lesson_definition_id} ({self.status})'
+
+
+class CompanionTranscriptJob(models.Model):
+    """One billable Bunny transcribe attempt per Stream GUID + language."""
+
+    STATUS_CLAIMED = 'claimed'
+    STATUS_QUEUED = 'queued'
+    STATUS_UNCERTAIN = 'uncertain'
+    STATUS_READY = 'ready'
+    STATUS_FAILED = 'failed'
+    STATUS_CHOICES = [
+        (STATUS_CLAIMED, 'claimed'),
+        (STATUS_QUEUED, 'queued'),
+        (STATUS_UNCERTAIN, 'uncertain'),
+        (STATUS_READY, 'ready'),
+        (STATUS_FAILED, 'failed'),
+    ]
+
+    bunny_video_id = models.CharField(max_length=36)
+    language = models.CharField(max_length=8, default='en')
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_CLAIMED, db_index=True)
+    attempt_count = models.PositiveIntegerField(default=0)
+    claimed_at = models.DateTimeField(null=True, blank=True)
+    posted_at = models.DateTimeField(null=True, blank=True)
+    last_error = models.TextField(blank=True, default='')
+    source_lesson_definition_id = models.BigIntegerField()
+    cues_json = models.JSONField(default=list, blank=True)
+    caption_version = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CompanionTranscriptJob'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['bunny_video_id', 'language'],
+                name='companion_transcript_job_video_lang',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['status', 'updated_at'], name='companion_txjob_status_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.bunny_video_id} {self.language} ({self.status})'
