@@ -84,8 +84,16 @@ class CommunitySettings(models.Model):
         blank=True,
         help_text=(
             'Owner/co-owner notification opt-ins by event type. Keys are stable event ids '
-            '(e.g. feedback, public_feed_reply, blog_reply, quiz_submission); values are typically '
-            'boolean. Omitted keys are treated as off (opt-in).'
+            '(e.g. feedback, public_feed_reply, blog_reply, quiz_submission, companion_request); '
+            'values are typically boolean. Omitted keys are treated as off (opt-in).'
+        ),
+    )
+    companion_guidance = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            'Owner-supplied Companion reference facts: mission, audience, faqs, '
+            'starting_points, escalation. Untrusted content; never system instructions.'
         ),
     )
     created_at = models.DateTimeField(auto_now_add=True)
@@ -595,6 +603,43 @@ class FeaturedCommunity(models.Model):
 
     def __str__(self):
         return f'FeaturedCommunity({self.community_id}, order={self.display_order})'
+
+
+class CompanionMemberRequest(models.Model):
+    """Member-confirmed Companion referral to current owners. No conversation transcript."""
+
+    LEARNING_CONTENT = 'learning_content'
+    INSTRUCTOR_HELP = 'instructor_help'
+    COMMUNITY_SUPPORT = 'community_support'
+    REQUEST_CHOICES = [
+        (LEARNING_CONTENT, 'Learning content'),
+        (INSTRUCTOR_HELP, 'Instructor help'),
+        (COMMUNITY_SUPPORT, 'Community support'),
+    ]
+
+    community = models.ForeignKey(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='companion_member_requests',
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='companion_member_requests',
+    )
+    request_type = models.CharField(max_length=32, choices=REQUEST_CHOICES)
+    topic = models.CharField(max_length=200)
+    message = models.TextField(max_length=2000)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'CompanionMemberRequest'
+        indexes = [
+            models.Index(fields=['community', 'user', 'created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.request_type} {self.topic} ({self.community_id})'
 
 
 # Signal to create default "hobby plan" when a community is created
