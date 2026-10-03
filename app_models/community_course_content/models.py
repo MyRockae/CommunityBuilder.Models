@@ -83,6 +83,10 @@ class LessonDefinition(models.Model):
     )
     transcript_language = models.CharField(max_length=8, blank=True, default='en')
     transcript_error = models.TextField(blank=True, null=True)
+    companion_index_revision = models.PositiveIntegerField(
+        default=0,
+        help_text='Monotonic Companion index order for this lesson. Not a content hash.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -279,6 +283,7 @@ class CompanionIndexOutbox(models.Model):
     community_id = models.BigIntegerField()
     lesson_definition_id = models.BigIntegerField()
     content_version = models.CharField(max_length=64, blank=True, default='')
+    index_revision = models.PositiveIntegerField(default=0)
     status = models.CharField(
         max_length=16,
         choices=STATUS_CHOICES,
@@ -344,3 +349,54 @@ class CompanionTranscriptJob(models.Model):
 
     def __str__(self):
         return f'{self.bunny_video_id} {self.language} ({self.status})'
+
+
+class CompanionAttachmentExtractJob(models.Model):
+    """Background text extract for one lesson attachment file version."""
+
+    STATUS_PENDING = 'pending'
+    STATUS_READY = 'ready'
+    STATUS_SKIPPED = 'skipped'
+    STATUS_FAILED = 'failed'
+    STATUS_STALE = 'stale'
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'pending'),
+        (STATUS_READY, 'ready'),
+        (STATUS_SKIPPED, 'skipped'),
+        (STATUS_FAILED, 'failed'),
+        (STATUS_STALE, 'stale'),
+    ]
+
+    KIND_PDF = 'pdf'
+    KIND_DOCX = 'docx'
+    KIND_PPTX = 'pptx'
+    KIND_CHOICES = [
+        (KIND_PDF, 'pdf'),
+        (KIND_DOCX, 'docx'),
+        (KIND_PPTX, 'pptx'),
+    ]
+
+    attachment_id = models.BigIntegerField()
+    lesson_definition_id = models.BigIntegerField()
+    community_id = models.BigIntegerField()
+    file_version = models.CharField(max_length=1024, help_text='Storage ref captured at enqueue')
+    filename = models.CharField(max_length=255, blank=True, default='')
+    kind = models.CharField(max_length=8, choices=KIND_CHOICES)
+    status = models.CharField(max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING, db_index=True)
+    enqueue_index_revision = models.PositiveIntegerField(default=0)
+    pages_json = models.JSONField(default=list, blank=True)
+    last_error = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CompanionAttachmentExtractJob'
+        ordering = ['id']
+        indexes = [
+            models.Index(fields=['status', 'id'], name='companion_attjob_status_idx'),
+            models.Index(fields=['attachment_id', 'status'], name='companion_attjob_att_idx'),
+            models.Index(fields=['lesson_definition_id', 'status'], name='companion_attjob_lesson_idx'),
+        ]
+
+    def __str__(self):
+        return f'extract att={self.attachment_id} ({self.status})'
