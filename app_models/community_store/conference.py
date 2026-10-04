@@ -484,20 +484,33 @@ def cancel_vendor_meeting(session: StoreSlotSession) -> None:
         logger.exception('Failed to cancel vendor meeting session_id=%s', session.id)
 
 
+def _session_with_product(pk) -> StoreSlotSession:
+    return StoreSlotSession.objects.select_related(
+        'store_product',
+        'store_product__store',
+        'store_product__store__community',
+        'store_product__bookable_meeting_settings',
+    ).get(pk=pk)
+
+
+def _persist_conference_failure(session_id, error: str) -> StoreSlotSession:
+    StoreSlotSession.objects.filter(pk=session_id).update(
+        conference_status=SlotConferenceStatus.FAILED,
+        conference_error=(error or '')[:2000],
+        updated_at=timezone.now(),
+    )
+    return _session_with_product(session_id)
+
+
 def ensure_slot_conference(session: StoreSlotSession, *, attendee_email: str = '') -> StoreSlotSession:
     """Idempotent: create Meet/Zoom once; reuse join_url. Does not send email."""
+    provider = ''
+    conn = None
     with transaction.atomic():
         # Lock the session row only. select_related(bookable_meeting_settings) is a
         # nullable reverse OneToOne (LEFT JOIN); Postgres rejects FOR UPDATE on that.
         locked = StoreSlotSession.objects.select_for_update().get(pk=session.pk)
-        locked = (
-            StoreSlotSession.objects.select_related(
-                'store_product',
-                'store_product__store',
-                'store_product__store__community',
-                'store_product__bookable_meeting_settings',
-            ).get(pk=locked.pk)
-        )
+        locked = _session_with_product(locked.pk)
         if locked.cancelled_at:
             return locked
         settings = getattr(locked.store_product, 'bookable_meeting_settings', None)
@@ -526,10 +539,10 @@ def ensure_slot_conference(session: StoreSlotSession, *, attendee_email: str = '
                 and int(locked.max_attendees_snapshot or 1) == 1
             ):
                 community = locked.store_product.store.community
-                conn = active_connection(community, locked.conference_provider)
-                if conn:
+                meet_conn = active_connection(community, locked.conference_provider)
+                if meet_conn:
                     try:
-                        _add_google_attendee(locked, conn, attendee_email)
+                        _add_google_attendee(locked, meet_conn, attendee_email)
                     except Exception:
                         logger.exception('Failed to add Google attendee session_id=%s', locked.id)
             return locked
@@ -543,13 +556,23 @@ def ensure_slot_conference(session: StoreSlotSession, *, attendee_email: str = '
             locked.conference_error = 'No active Google or Zoom connection for this community.'
             locked.save(update_fields=['conference_status', 'conference_error', 'updated_at'])
             return locked
-        try:
-            if provider == ConferenceProvider.GOOGLE_MEET:
-                result = _create_google_meet(locked, conn, attendee_email=attendee_email)
-            elif provider == ConferenceProvider.ZOOM:
-                result = _create_zoom_meeting(locked, conn)
-            else:
-                raise RuntimeError('Meeting product has no conference provider.')
+
+    try:
+        if provider == ConferenceProvider.GOOGLE_MEET:
+            result = _create_google_meet(locked, conn, attendee_email=attendee_email)
+        elif provider == ConferenceProvider.ZOOM:
+            result = _create_zoom_meeting(locked, conn)
+        else:
+            raise RuntimeError('Meeting product has no conference provider.')
+    except Exception as exc:
+        logger.exception('ensure_slot_conference failed session_id=%s', locked.id)
+        return _persist_conference_failure(locked.pk, str(exc))
+
+    try:
+        with transaction.atomic():
+            locked = StoreSlotSession.objects.select_for_update().get(pk=locked.pk)
+            if (locked.join_url or '').strip() and locked.conference_status == SlotConferenceStatus.READY:
+                return _session_with_product(locked.pk)
             locked.join_url = result.get('join_url') or ''
             locked.host_start_url = result.get('host_start_url') or ''
             locked.provider_meeting_id = result.get('provider_meeting_id') or ''
@@ -574,12 +597,10 @@ def ensure_slot_conference(session: StoreSlotSession, *, attendee_email: str = '
                     'updated_at',
                 ]
             )
-        except Exception as exc:
-            logger.exception('ensure_slot_conference failed session_id=%s', locked.id)
-            locked.conference_status = SlotConferenceStatus.FAILED
-            locked.conference_error = str(exc)[:2000]
-            locked.save(update_fields=['conference_status', 'conference_error', 'updated_at'])
-        return locked
+    except Exception as exc:
+        logger.exception('ensure_slot_conference save failed session_id=%s', locked.id)
+        return _persist_conference_failure(locked.pk, str(exc))
+    return _session_with_product(locked.pk)
 
 
 def google_oauth_authorize_url(*, redirect_uri: str, state: str) -> str:

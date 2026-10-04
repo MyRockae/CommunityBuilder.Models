@@ -384,8 +384,8 @@ class StoreSlotSession(models.Model):
         default='',
     )
     max_attendees_snapshot = models.PositiveIntegerField(default=1)
-    join_url = models.URLField(blank=True, default='')
-    host_start_url = models.URLField(blank=True, default='')
+    join_url = models.URLField(max_length=2048, blank=True, default='')
+    host_start_url = models.URLField(max_length=2048, blank=True, default='')
     provider_meeting_id = models.CharField(max_length=255, blank=True, default='')
     ics_uid = models.CharField(max_length=255, blank=True, default='')
     ics_sequence = models.PositiveIntegerField(default=0)
