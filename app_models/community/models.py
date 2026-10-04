@@ -84,7 +84,7 @@ class CommunitySettings(models.Model):
         blank=True,
         help_text=(
             'Owner/co-owner notification opt-ins by event type. Keys are stable event ids '
-            '(e.g. feedback, public_feed_reply, blog_reply, quiz_submission, companion_request); '
+            '(e.g. feedback, public_feed_reply, blog_reply, quiz_submission); '
             'values are typically boolean. Omitted keys are treated as off (opt-in).'
         ),
     )

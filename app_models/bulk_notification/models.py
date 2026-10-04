@@ -27,7 +27,6 @@ class NotificationEvent(models.TextChoices):
     TOWN_HALL_REPLY = 'town_hall_reply', 'Town hall reply'
     PUBLIC_FEED_REPLY = 'public_feed_reply', 'Public feed reply'
     FORM_RESPONSE = 'form_response', 'Form response'
-    COMPANION_REQUEST = 'companion_request', 'Companion member request'
     INACTIVE_USER = 'inactive_user', 'Inactive user'
     VIEWS_MOMENTUM = 'views_momentum', 'Community views momentum'
     MARKETING_CAMPAIGN = 'marketing_campaign', 'Marketing campaign'
