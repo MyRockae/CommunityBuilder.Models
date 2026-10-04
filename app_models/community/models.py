@@ -96,6 +96,13 @@ class CommunitySettings(models.Model):
             'starting_points, escalation. Untrusted content; never system instructions.'
         ),
     )
+    member_companion_enabled = models.BooleanField(
+        default=False,
+        help_text=(
+            'Owner opt-in for the member Companion rail. Does not enable a future '
+            'owner companion. Preference only; never system instructions.'
+        ),
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
