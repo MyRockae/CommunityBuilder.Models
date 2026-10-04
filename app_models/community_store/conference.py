@@ -487,12 +487,17 @@ def cancel_vendor_meeting(session: StoreSlotSession) -> None:
 def ensure_slot_conference(session: StoreSlotSession, *, attendee_email: str = '') -> StoreSlotSession:
     """Idempotent: create Meet/Zoom once; reuse join_url. Does not send email."""
     with transaction.atomic():
-        locked = StoreSlotSession.objects.select_for_update().select_related(
-            'store_product',
-            'store_product__store',
-            'store_product__store__community',
-            'store_product__bookable_meeting_settings',
-        ).get(pk=session.pk)
+        # Lock the session row only. select_related(bookable_meeting_settings) is a
+        # nullable reverse OneToOne (LEFT JOIN); Postgres rejects FOR UPDATE on that.
+        locked = StoreSlotSession.objects.select_for_update().get(pk=session.pk)
+        locked = (
+            StoreSlotSession.objects.select_related(
+                'store_product',
+                'store_product__store',
+                'store_product__store__community',
+                'store_product__bookable_meeting_settings',
+            ).get(pk=locked.pk)
+        )
         if locked.cancelled_at:
             return locked
         settings = getattr(locked.store_product, 'bookable_meeting_settings', None)
