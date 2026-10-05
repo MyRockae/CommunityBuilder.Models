@@ -165,17 +165,13 @@ class CourseLessonPlacement(models.Model):
 
 
 class LessonDefinitionAttachment(models.Model):
-    """Supplementary files and lesson materials for a lesson definition (merged former attachment + resource)."""
+    """Supplementary files and lesson materials for a lesson definition."""
 
-    MATERIAL_KIND_LINK = 'link'
     MATERIAL_KIND_FILE = 'file'
-    MATERIAL_KIND_VIDEO = 'video'
     MATERIAL_KIND_SUPPLEMENT = 'supplement'
 
     KIND_CHOICES = [
-        (MATERIAL_KIND_LINK, 'Link'),
         (MATERIAL_KIND_FILE, 'File'),
-        (MATERIAL_KIND_VIDEO, 'Video'),
         (MATERIAL_KIND_SUPPLEMENT, 'Supplement'),
     ]
 
@@ -185,10 +181,22 @@ class LessonDefinitionAttachment(models.Model):
         related_name='attachments',
         help_text='Lesson this row belongs to',
     )
+    resource_content = models.ForeignKey(
+        'community_resource.ResourceContent',
+        on_delete=models.CASCADE,
+        related_name='lesson_attachments',
+        null=True,
+        blank=True,
+        help_text='Drive-backed library file when kind=file. Null for supplements.',
+    )
     title = models.CharField(max_length=255, help_text='Display title or label')
-    kind = models.CharField(max_length=20, choices=KIND_CHOICES, help_text='link, file (stored path), video (URL), supplement (legacy attachment)')
-    url = models.TextField(blank=True, null=True, help_text='External URL or storage ref')
-    content_source = models.CharField(max_length=50, blank=True, null=True, help_text='For video: youtube, vimeo, etc.')
+    kind = models.CharField(
+        max_length=20,
+        choices=KIND_CHOICES,
+        help_text='file (Drive resource pointer) or supplement (notes overlay)',
+    )
+    url = models.TextField(blank=True, null=True, help_text='Storage ref for supplements')
+    content_source = models.CharField(max_length=50, blank=True, null=True, help_text='Unused for Drive pointers')
     supplement_file_type = models.CharField(
         max_length=10,
         blank=True,
@@ -205,7 +213,16 @@ class LessonDefinitionAttachment(models.Model):
         verbose_name = 'Lesson Definition Attachment'
         verbose_name_plural = 'Lesson Definition Attachments'
         ordering = ['order', 'id']
-        indexes = [models.Index(fields=['lesson_definition'])]
+        indexes = [
+            models.Index(fields=['lesson_definition']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['lesson_definition', 'resource_content'],
+                condition=models.Q(resource_content__isnull=False),
+                name='uniq_ld_att_resource_content',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.title} ({self.kind})"
