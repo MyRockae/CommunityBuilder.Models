@@ -1,7 +1,53 @@
 from django.db import models
 from django.utils import timezone
+from app_models.account.models import User
 from app_models.community.models import Community, CommunityGroup
 from app_models.shared.validators import slug_username_validator
+
+
+class DriveConnectionStatus(models.TextChoices):
+    ACTIVE = 'active', 'Active'
+    EXPIRED = 'expired', 'Expired'
+    REVOKED = 'revoked', 'Revoked'
+
+
+class CommunityDriveConnection(models.Model):
+    """Owner-connected Google Drive account for one community."""
+
+    community = models.OneToOneField(
+        Community,
+        on_delete=models.CASCADE,
+        related_name='drive_connection',
+    )
+    connected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='community_drive_connections',
+    )
+    account_email = models.EmailField(blank=True, default='')
+    provider_user_id = models.CharField(max_length=255, blank=True, default='')
+    refresh_token_encrypted = models.TextField(blank=True, default='')
+    access_token_encrypted = models.TextField(blank=True, default='')
+    access_token_expires_at = models.DateTimeField(null=True, blank=True)
+    scopes = models.TextField(blank=True, default='')
+    status = models.CharField(
+        max_length=20,
+        choices=DriveConnectionStatus.choices,
+        default=DriveConnectionStatus.ACTIVE,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'CommunityDriveConnection'
+        verbose_name = 'Community Drive connection'
+        verbose_name_plural = 'Community Drive connections'
+
+    def __str__(self):
+        return f'{self.community_id} drive ({self.status})'
 
 
 class Resource(models.Model):
@@ -139,8 +185,22 @@ class ResourceContent(models.Model):
         null=True,
         help_text='Last Bunny encode error when video_status is failed',
     )
+    drive_file_id = models.CharField(
+        max_length=128,
+        blank=True,
+        default='',
+        help_text='Google Drive file id when content_source is google_drive',
+    )
+    drive_file_name = models.CharField(max_length=512, blank=True, default='')
+    drive_mime_type = models.CharField(max_length=255, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    @property
+    def is_google_drive(self) -> bool:
+        return bool((self.drive_file_id or '').strip()) or (
+            (self.content_source or '').strip() == 'google_drive'
+        )
 
     class Meta:
         db_table = 'ResourceContent'
