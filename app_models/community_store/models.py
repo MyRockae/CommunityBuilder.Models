@@ -170,8 +170,16 @@ class StoreProduct(models.Model):
     file_url = models.URLField(
         blank=True,
         null=True,
-        help_text='URL of the downloadable file (required when product_kind is file)',
+        help_text='Unused for Drive-backed file products; kept nullable for legacy rows',
     )
+    drive_file_id = models.CharField(
+        max_length=128,
+        blank=True,
+        default='',
+        help_text='Google Drive file id when product_kind is file',
+    )
+    drive_file_name = models.CharField(max_length=512, blank=True, default='')
+    drive_mime_type = models.CharField(max_length=255, blank=True, default='')
     external_url = models.URLField(
         blank=True,
         null=True,
@@ -212,11 +220,15 @@ class StoreProduct(models.Model):
             models.Index(fields=['store', 'product_kind']),
         ]
 
+    @property
+    def is_google_drive(self) -> bool:
+        return bool((self.drive_file_id or '').strip())
+
     def clean(self):
         kind = self.product_kind or StoreProductKind.FILE
         if kind == StoreProductKind.FILE:
-            if not (self.file_url or '').strip():
-                raise ValidationError({'file_url': 'File products require a file URL.'})
+            if not (self.drive_file_id or '').strip():
+                raise ValidationError({'drive_file_id': 'File products require a Google Drive file.'})
         elif kind == StoreProductKind.LINK:
             if not (self.external_url or '').strip():
                 raise ValidationError({'external_url': 'Link products require an external URL.'})

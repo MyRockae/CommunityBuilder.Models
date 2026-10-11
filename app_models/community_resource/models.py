@@ -38,13 +38,20 @@ class CommunityDriveConnection(models.Model):
         default=DriveConnectionStatus.ACTIVE,
         db_index=True,
     )
-    drive_folder_id = models.CharField(
+    resource_folder_id = models.CharField(
         max_length=128,
         blank=True,
         default='',
         help_text='Google Drive folder id for new resource uploads',
     )
-    drive_folder_name = models.CharField(max_length=512, blank=True, default='')
+    resource_folder_name = models.CharField(max_length=512, blank=True, default='')
+    store_folder_id = models.CharField(
+        max_length=128,
+        blank=True,
+        default='',
+        help_text='Google Drive folder id for new store digital downloads',
+    )
+    store_folder_name = models.CharField(max_length=512, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
