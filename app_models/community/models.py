@@ -32,6 +32,13 @@ class Community(models.Model):
     banner_url = models.URLField(blank=True, null=True)
     tags = models.ManyToManyField(Tag, related_name='communities', blank=True)
     is_active = models.BooleanField(default=True, help_text='If false, the community is hidden or disabled.')
+    is_listed = models.BooleanField(
+        default=False,
+        help_text=(
+            'If false, the community is omitted from the public community directory. '
+            'Direct links and membership stay available.'
+        ),
+    )
     flag_count = models.PositiveIntegerField(default=0, help_text='Number of times the community has been flagged by users.')
     bunny_collection_id = models.CharField(
         max_length=36,
