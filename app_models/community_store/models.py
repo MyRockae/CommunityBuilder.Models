@@ -673,50 +673,6 @@ class StorePurchase(models.Model):
         return f"{self.buyer_email} – {self.product.name} ({self.status})"
 
 
-class StoreGuestEmailChallenge(models.Model):
-    """6-digit inbox proof before guest store checkout. Raw code is never stored."""
-
-    email = models.EmailField(db_index=True)
-    buyer_name = models.CharField(max_length=255, blank=True, default='')
-    code_hash = models.CharField(max_length=128)
-    expires_at = models.DateTimeField()
-    attempt_count = models.PositiveSmallIntegerField(default=0)
-    consumed_at = models.DateTimeField(null=True, blank=True)
-    last_sent_at = models.DateTimeField(null=True, blank=True)
-    community = models.ForeignKey(
-        Community,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name='store_guest_email_challenges',
-    )
-    product = models.ForeignKey(
-        StoreProduct,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='guest_email_challenges',
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'StoreGuestEmailChallenge'
-        verbose_name = 'Store guest email challenge'
-        verbose_name_plural = 'Store guest email challenges'
-        indexes = [
-            models.Index(fields=['email', 'expires_at']),
-        ]
-
-    def save(self, *args, **kwargs):
-        if self.email:
-            self.email = self.email.strip().lower()
-        super().save(*args, **kwargs)
-
-    def __str__(self):
-        return f'OTP {self.email} expires {self.expires_at}'
-
-
 class StoreDownloadToken(models.Model):
     """
     Time-limited token embedded in download links emailed after purchase or when a returning
