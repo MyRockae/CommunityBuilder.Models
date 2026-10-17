@@ -156,11 +156,13 @@ class EventRegistration(models.Model):
     STATUS_COMPLETED = "completed"
     STATUS_FAILED = "failed"
     STATUS_REFUNDED = "refunded"
+    STATUS_CANCELLED = "cancelled"
     STATUS_CHOICES = [
         (STATUS_PENDING, "Pending payment"),
         (STATUS_COMPLETED, "Completed"),
         (STATUS_FAILED, "Failed"),
         (STATUS_REFUNDED, "Refunded"),
+        (STATUS_CANCELLED, "Cancelled"),
     ]
 
     event = models.ForeignKey(
