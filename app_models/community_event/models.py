@@ -173,7 +173,12 @@ class EventRegistration(models.Model):
         User,
         on_delete=models.PROTECT,
         related_name="event_registrations",
+        null=True,
+        blank=True,
     )
+    attendee_name = models.CharField(max_length=255, blank=True, default="")
+    attendee_email = models.EmailField(blank=True, default="", db_index=True)
+    attendance_emailed_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PENDING)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     currency = models.CharField(max_length=3, default="USD")
@@ -228,8 +233,21 @@ class EventRegistration(models.Model):
                 fields=["event", "attendee_user"],
                 condition=models.Q(status="completed"),
                 name="eventregistration_unique_completed_attendee_per_event",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["event", "attendee_email"],
+                condition=models.Q(status="completed") & ~models.Q(attendee_email=""),
+                name="eventregistration_unique_completed_email_per_event",
+            ),
         ]
 
+    def save(self, *args, **kwargs):
+        if self.attendee_email:
+            self.attendee_email = self.attendee_email.strip().lower()
+        if self.attendee_name:
+            self.attendee_name = self.attendee_name.strip()
+        super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.event_id}:{self.attendee_user_id} ({self.status})"
+        who = self.attendee_user_id or self.attendee_email or "?"
+        return f"{self.event_id}:{who} ({self.status})"
