@@ -355,11 +355,11 @@ class PaymentTransaction(models.Model):
     )
     event_registration = models.ForeignKey(
         'community_event.EventRegistration',
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name='payment_transactions',
         null=True,
         blank=True,
-        help_text='Event registration (if transaction_type is event_registration)',
+        help_text='Event registration (if transaction_type is event_registration). Cleared when a finished event is deleted so the charge record stays.',
     )
 
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text='Total payment amount charged to the buyer')

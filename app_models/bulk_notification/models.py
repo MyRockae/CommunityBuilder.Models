@@ -30,6 +30,7 @@ class NotificationEvent(models.TextChoices):
     INACTIVE_USER = 'inactive_user', 'Inactive user'
     VIEWS_MOMENTUM = 'views_momentum', 'Community views momentum'
     MARKETING_CAMPAIGN = 'marketing_campaign', 'Marketing campaign'
+    BADGE_EARNED = 'badge_earned', 'Badge earned'
 
 
 class NotificationBatchStatus(models.TextChoices):
