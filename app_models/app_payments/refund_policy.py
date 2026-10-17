@@ -31,9 +31,9 @@ def refund_availability(
     if paid_at is None:
         return False, REASON_OUTSIDE_WINDOW
     try:
-        hours = int(window_hours)
+        hours = float(window_hours)
     except (TypeError, ValueError):
-        hours = 336
+        hours = 336.0
     if hours < 0:
         hours = 0
     if now - paid_at > timedelta(hours=hours):
