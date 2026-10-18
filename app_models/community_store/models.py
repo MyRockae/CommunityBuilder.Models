@@ -48,6 +48,13 @@ class StoreProductKind(models.TextChoices):
     FILE = 'file', 'File download'
     LINK = 'link', 'External link'
     MEETING = 'meeting', 'Bookable meeting'
+    COURSE = 'course', 'Course'
+
+
+class StoreBuyerAudience(models.TextChoices):
+    ANYONE = 'anyone', 'Anyone'
+    MEMBERS = 'members', 'Community members only'
+    NON_MEMBERS = 'non_members', 'Non-members only'
 
 
 class ConferenceProvider(models.TextChoices):
@@ -120,7 +127,7 @@ class CommunityConferenceConnection(models.Model):
 
 
 class StoreProduct(models.Model):
-    """A digital product listed in a community store (file, external link, or bookable meeting)."""
+    """A digital product listed in a community store (file, link, meeting, or course)."""
 
     store = models.ForeignKey(
         CommunityStore,
@@ -140,6 +147,21 @@ class StoreProduct(models.Model):
         default=StoreProductKind.FILE,
         db_index=True,
         help_text='How the product is delivered after purchase',
+    )
+    buyer_audience = models.CharField(
+        max_length=20,
+        choices=StoreBuyerAudience.choices,
+        default=StoreBuyerAudience.ANYONE,
+        db_index=True,
+        help_text='Who may purchase this product: anyone, members, or non_members',
+    )
+    course = models.ForeignKey(
+        'community_course.Course',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='store_products',
+        help_text='Course unlocked by this product when product_kind is course',
     )
     amount = models.DecimalField(
         max_digits=10,
@@ -218,6 +240,17 @@ class StoreProduct(models.Model):
         indexes = [
             models.Index(fields=['store', 'is_active']),
             models.Index(fields=['store', 'product_kind']),
+            models.Index(fields=['course', 'is_active'], name='storeproduct_course_active_idx'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['store', 'course'],
+                condition=models.Q(
+                    product_kind='course',
+                    course__isnull=False,
+                ),
+                name='storeproduct_unique_store_course',
+            ),
         ]
 
     @property
@@ -229,11 +262,19 @@ class StoreProduct(models.Model):
         if kind == StoreProductKind.FILE:
             if not (self.drive_file_id or '').strip():
                 raise ValidationError({'drive_file_id': 'File products require a Google Drive file.'})
+            if self.course_id:
+                raise ValidationError({'course': 'Only course products may link a course.'})
         elif kind == StoreProductKind.LINK:
             if not (self.external_url or '').strip():
                 raise ValidationError({'external_url': 'Link products require an external URL.'})
+            if self.course_id:
+                raise ValidationError({'course': 'Only course products may link a course.'})
         elif kind == StoreProductKind.MEETING:
-            pass
+            if self.course_id:
+                raise ValidationError({'course': 'Only course products may link a course.'})
+        elif kind == StoreProductKind.COURSE:
+            if not self.course_id:
+                raise ValidationError({'course': 'Course products require a course.'})
 
     def __str__(self):
         return self.name
