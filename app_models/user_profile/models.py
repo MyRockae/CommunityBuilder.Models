@@ -79,8 +79,8 @@ class UserProfileSocialLink(models.Model):
 
 class UserAddress(models.Model):
     """
-    Postal-style address lines for display. Use country_code / billing_region for
-    tax and payment-provider routing; state is reserved for other product use.
+    Postal-style address lines for display (billing / residence).
+    Checkout country and payment-provider routing use UserWallet.country.
     """
     user = models.ForeignKey(
         User,
@@ -112,13 +112,13 @@ class UserAddress(models.Model):
         max_length=2,
         blank=True,
         null=True,
-        help_text='ISO 3166-1 alpha-2 for this address (tax / billing / residence)',
+        help_text='ISO 3166-1 alpha-2 for this address (billing / residence)',
     )
     billing_region = models.CharField(
         max_length=100,
         blank=True,
         null=True,
-        help_text='State/province or subdivision for tax and payment routing (e.g. code or name as required by the gateway)',
+        help_text='State/province or subdivision for billing (e.g. code or name as required by the gateway)',
     )
     state = models.CharField(
         max_length=100,
@@ -129,7 +129,7 @@ class UserAddress(models.Model):
     address_type = models.CharField(
         max_length=64,
         default='residence',
-        help_text='Purpose of this address (e.g. billing, tax, residence); values are defined by your API/product',
+        help_text='Purpose of this address (billing or residence); values are defined by your API/product',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

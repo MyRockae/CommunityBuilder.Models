@@ -1,20 +1,14 @@
 """
 Resolve buyer country for catalog/checkout/gateway routing.
 
-Source address type is configurable via ``BUYER_ROUTING_ADDRESS_TYPE``
-(currently ``tax``). Change that constant if routing should use ``billing``
-(or another type) later — callers keep using ``resolve_buyer_country``.
-
-``UserAddress`` is imported lazily so this module can load before
-``app_models.user_profile`` is registered (e.g. Payment INSTALLED_APPS).
+Source: ``UserWallet.country`` (personal wallet). Country alone drives
+buyer display/charge currency selection and gateway routing (NG→Paystack,
+else Stripe). CommunityWallet.country is seller payout only.
 """
 
 from __future__ import annotations
 
 from typing import Optional
-
-# Address type used for price/currency/gateway routing. Swap to 'billing' later if needed.
-BUYER_ROUTING_ADDRESS_TYPE = 'tax'
 
 
 def normalize_country_code(code: str | None) -> str | None:
@@ -28,27 +22,38 @@ def normalize_country_code(code: str | None) -> str | None:
     return normalized
 
 
-def get_buyer_routing_address(user):
-    """UserAddress used for checkout/catalog routing, or None."""
-    if user is None or not getattr(user, 'is_authenticated', True):
+def get_or_create_user_wallet(user):
+    """Return the user's primary wallet row (creates a bare row if none)."""
+    if user is None or getattr(user, 'pk', None) is None:
         return None
-    if getattr(user, 'pk', None) is None:
-        return None
-    from app_models.user_profile.models import UserAddress
+    from app_models.app_payments.models import UserWallet
 
-    return (
-        UserAddress.objects.filter(user=user, address_type=BUYER_ROUTING_ADDRESS_TYPE)
-        .order_by('-updated_at')
+    wallet = (
+        UserWallet.objects.filter(user=user)
+        .order_by('-is_primary', '-updated_at')
         .first()
     )
+    if wallet is not None:
+        return wallet
+    return UserWallet.objects.create(user=user, is_primary=True)
 
 
 def resolve_buyer_country(user) -> Optional[str]:
     """
-    ISO-2 from the buyer routing address ``country_code``, or None if missing.
+    ISO-2 from ``UserWallet.country``, or None if missing.
     Callers that need a catalog default should treat None as US/USD.
     """
-    addr = get_buyer_routing_address(user)
-    if addr is None:
+    if user is None or not getattr(user, 'is_authenticated', True):
         return None
-    return normalize_country_code(getattr(addr, 'country_code', None))
+    if getattr(user, 'pk', None) is None:
+        return None
+    from app_models.app_payments.models import UserWallet
+
+    wallet = (
+        UserWallet.objects.filter(user=user)
+        .order_by('-is_primary', '-updated_at')
+        .first()
+    )
+    if wallet is None:
+        return None
+    return normalize_country_code(getattr(wallet, 'country', None))

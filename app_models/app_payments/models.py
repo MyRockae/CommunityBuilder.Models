@@ -44,49 +44,65 @@ class PaymentGateway(models.TextChoices):
     PAYSTACK = 'paystack', 'Paystack'
 
 
-class CreatorPayoutAccount(models.Model):
-    """
-    A creator (community owner) can attach multiple payout destinations over time
-    (e.g. Stripe Connect for UK/US/CA and Paystack subaccount/recipient for Nigeria).
-    Payment service picks the row that matches buyer gateway/currency and is_primary when needed.
-    """
-    STATUS_PENDING = 'pending'
-    STATUS_ACTIVE = 'active'
-    STATUS_RESTRICTED = 'restricted'
-    STATUS_DISABLED = 'disabled'
-    STATUS_CHOICES = [
-        (STATUS_PENDING, 'Pending onboarding'),
-        (STATUS_ACTIVE, 'Active — payouts enabled'),
-        (STATUS_RESTRICTED, 'Restricted'),
-        (STATUS_DISABLED, 'Disabled'),
+class WalletStatus:
+    PENDING = 'pending'
+    ACTIVE = 'active'
+    RESTRICTED = 'restricted'
+    DISABLED = 'disabled'
+    CHOICES = [
+        (PENDING, 'Pending onboarding'),
+        (ACTIVE, 'Active — payouts enabled'),
+        (RESTRICTED, 'Restricted'),
+        (DISABLED, 'Disabled'),
     ]
+
+
+class UserWallet(models.Model):
+    """
+    Personal wallet for a user: country (checkout/gateway routing) and optional
+    payout destination (referrals / personal earnings).
+    """
 
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
-        related_name='creator_payout_accounts',
-        help_text='Creator (community owner) receiving payouts',
+        related_name='wallets',
+        help_text='User this wallet belongs to',
+    )
+    country = models.CharField(
+        max_length=2,
+        blank=True,
+        null=True,
+        help_text='ISO 3166-1 alpha-2 country for checkout/gateway routing (null until set)',
+    )
+    legal_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Legal name (person or business) for payout onboarding',
     )
     payment_gateway = models.CharField(
         max_length=20,
         choices=PaymentGateway.choices,
-        help_text='Processor this payout account is registered with',
+        blank=True,
+        null=True,
+        help_text='Processor this payout destination is registered with (null until payout setup)',
     )
     label = models.CharField(
         max_length=255,
         blank=True,
         default='',
-        help_text='Optional label shown to the creator (e.g. main bank, NGN wallet)',
+        help_text='Optional label shown to the user (e.g. main bank, NGN wallet)',
     )
     status = models.CharField(
         max_length=20,
-        choices=STATUS_CHOICES,
-        default=STATUS_PENDING,
+        choices=WalletStatus.CHOICES,
+        default=WalletStatus.PENDING,
         help_text='Onboarding / capability state mirrored from the gateway where possible',
     )
     is_primary = models.BooleanField(
         default=False,
-        help_text='Preferred account for this user on this gateway (splits / transfers)',
+        help_text='Preferred payout account for this user on this gateway',
     )
 
     stripe_connect_account_id = models.CharField(
@@ -95,7 +111,6 @@ class CreatorPayoutAccount(models.Model):
         null=True,
         help_text='Stripe Connect account id (acct_…)',
     )
-
     paystack_subaccount_code = models.CharField(
         max_length=255,
         blank=True,
@@ -113,9 +128,9 @@ class CreatorPayoutAccount(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'CreatorPayoutAccount'
-        verbose_name = 'Creator payout account'
-        verbose_name_plural = 'Creator payout accounts'
+        db_table = 'UserWallet'
+        verbose_name = 'User wallet'
+        verbose_name_plural = 'User wallets'
         ordering = ['-is_primary', '-updated_at']
         indexes = [
             models.Index(fields=['user', 'payment_gateway', 'status']),
@@ -126,59 +141,95 @@ class CreatorPayoutAccount(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'payment_gateway'],
-                condition=models.Q(is_primary=True),
-                name='creatorpayoutaccount_unique_primary_per_user_gateway',
+                condition=models.Q(is_primary=True, payment_gateway__isnull=False),
+                name='userwallet_unique_primary_per_user_gateway',
             ),
         ]
 
     def __str__(self):
-        return f'{self.user.email} — {self.payment_gateway} ({self.status})'
+        gw = self.payment_gateway or 'no-gateway'
+        return f'{self.user.email} — {gw} ({self.status})'
 
 
-class UserFiscalProfile(models.Model):
-    """Per-user tax/KYC identity (one row per user). Checkout routing is derived from tax address."""
+class CommunityWallet(models.Model):
+    """
+    Community payout destination. One wallet per community.
+    Country is the seller payout rail destination only — not buyer checkout currency.
+    """
 
-    user = models.OneToOneField(
-        User,
+    community = models.OneToOneField(
+        'community.Community',
         on_delete=models.CASCADE,
-        related_name='fiscal_profile',
-        help_text='User this fiscal profile belongs to',
+        related_name='wallet',
+        help_text='Community this payout wallet belongs to',
     )
-    legal_full_name = models.CharField(
+    country = models.CharField(
+        max_length=2,
+        blank=True,
+        null=True,
+        help_text='ISO 3166-1 alpha-2 country for seller payout destination',
+    )
+    legal_name = models.CharField(
         max_length=255,
         blank=True,
         default='',
-        help_text='Legal name as shown on tax or bank documents',
+        help_text='Legal name (person or business) for community payout onboarding',
     )
-    tax_id = models.CharField(
-        max_length=255,
+    payment_gateway = models.CharField(
+        max_length=20,
+        choices=PaymentGateway.choices,
         blank=True,
         null=True,
-        help_text='Hashed tax identifier (e.g. EIN, VAT); never store plaintext',
+        help_text='Processor this payout destination is registered with',
     )
-    identity_document_type = models.CharField(
-        max_length=64,
+    label = models.CharField(
+        max_length=255,
         blank=True,
         default='',
-        help_text='Document type for KYC (e.g. passport, national_id, drivers_license)',
+        help_text='Optional label for this payout destination',
     )
-    identity_document_number = models.CharField(
+    status = models.CharField(
+        max_length=20,
+        choices=WalletStatus.CHOICES,
+        default=WalletStatus.PENDING,
+        help_text='Onboarding / capability state mirrored from the gateway where possible',
+    )
+
+    stripe_connect_account_id = models.CharField(
         max_length=255,
         blank=True,
         null=True,
-        help_text='Hashed government ID number for KYC; never store plaintext',
+        help_text='Stripe Connect account id (acct_…)',
     )
+    paystack_subaccount_code = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Paystack subaccount code for split settlements',
+    )
+    paystack_recipient_code = models.CharField(
+        max_length=255,
+        blank=True,
+        null=True,
+        help_text='Paystack transfer recipient code for payouts to bank/mobile money',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'UserFiscalProfile'
-        verbose_name = 'User fiscal profile'
-        verbose_name_plural = 'User fiscal profiles'
+        db_table = 'CommunityWallet'
+        verbose_name = 'Community wallet'
+        verbose_name_plural = 'Community wallets'
+        indexes = [
+            models.Index(fields=['payment_gateway', 'status']),
+            models.Index(fields=['stripe_connect_account_id']),
+            models.Index(fields=['paystack_subaccount_code']),
+        ]
 
     def __str__(self):
-        name = (self.legal_full_name or '').strip() or '—'
-        return f'{self.user.email} — {name}'
+        gw = self.payment_gateway or 'no-gateway'
+        return f'{self.community.alias} — {gw} ({self.status})'
 
 
 class PaymentCheckoutSession(models.Model):
@@ -310,9 +361,9 @@ class PaymentCheckoutSession(models.Model):
 class PaymentTransaction(models.Model):
     """Ledger row per charge (Stripe or Paystack): app subscription, community membership, or store sale.
 
-    For community-linked payments, use platform_fee / owner_amount and transferred_to_owner /
+    For community-linked payments, use platform_fee / community_amount and transferred_to_community /
     stripe_transfer_id or paystack_transfer_reference the same way: collect on the platform account,
-    then pay the community owner on your schedule (e.g. weekly batch).
+    then pay the community on your schedule (e.g. weekly batch).
     """
     TRANSACTION_TYPE_CHOICES = [
         ('app_subscription', 'App Subscription'),
@@ -364,7 +415,12 @@ class PaymentTransaction(models.Model):
 
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, help_text='Total payment amount charged to the buyer')
     platform_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Platform cut (e.g. 2% for community subscriptions and store sales; 0 for app subscriptions)')
-    owner_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0, help_text='Amount owed to the community owner after platform_fee (e.g. 98% for member subs and store sales)')
+    community_amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Amount owed to the community after platform_fee (e.g. 98% for member subs and store sales)',
+    )
 
     currency = models.CharField(max_length=3, default='USD', help_text='Currency code (USD, EUR, etc.)')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending', help_text='Payment status')
@@ -400,22 +456,34 @@ class PaymentTransaction(models.Model):
         help_text='Paystack transaction reference (null when payment_gateway is stripe)',
     )
 
-    transferred_to_owner = models.BooleanField(default=False, help_text='Whether owner_amount has been paid out to the community owner')
-    transferred_at = models.DateTimeField(null=True, blank=True, help_text='When the transfer to owner was completed')
-    stripe_transfer_id = models.CharField(max_length=255, null=True, blank=True, help_text='Stripe Transfer id (Connect) or payout reference for owner_amount')
+    transferred_to_community = models.BooleanField(
+        default=False,
+        help_text='Whether community_amount has been paid out to the community wallet',
+    )
+    transferred_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the transfer to the community was completed',
+    )
+    stripe_transfer_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text='Stripe Transfer id (Connect) or payout reference for community_amount',
+    )
     paystack_transfer_reference = models.CharField(
         max_length=255,
         null=True,
         blank=True,
-        help_text='Paystack transfer reference when owner_amount is paid out via Paystack',
+        help_text='Paystack transfer reference when community_amount is paid out via Paystack',
     )
-    creator_payout_account = models.ForeignKey(
-        CreatorPayoutAccount,
+    community_wallet = models.ForeignKey(
+        CommunityWallet,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name='payment_transactions',
-        help_text='Creator payout profile used when transferring owner_amount (audit trail)',
+        help_text='Community wallet used when transferring community_amount (audit trail)',
     )
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -433,7 +501,7 @@ class PaymentTransaction(models.Model):
             models.Index(fields=['event_registration', 'status']),
             models.Index(fields=['stripe_payment_intent_id']),
             models.Index(fields=['payment_gateway']),
-            models.Index(fields=['transferred_to_owner']),
+            models.Index(fields=['transferred_to_community']),
         ]
 
     def __str__(self):

@@ -10,7 +10,8 @@ REASON_ALREADY_PAID_OUT = "already_paid_out"
 def refund_availability(
     *,
     paid_at,
-    transferred_to_owner,
+    transferred_to_owner=None,
+    transferred_to_community=None,
     window_hours,
     now,
     ends_at=None,
@@ -21,12 +22,18 @@ def refund_availability(
 
     ``reason`` is set only for a succeeded charge that cannot be refunded.
     ``ends_at`` is the event end. Group subscriptions pass none.
+    Prefer ``transferred_to_community``; ``transferred_to_owner`` is a legacy alias.
     """
+    paid_out = (
+        transferred_to_community
+        if transferred_to_community is not None
+        else transferred_to_owner
+    )
     if not has_succeeded_charge:
         return False, None
     if ends_at is not None and ends_at <= now:
         return False, REASON_EVENT_ENDED
-    if transferred_to_owner:
+    if paid_out:
         return False, REASON_ALREADY_PAID_OUT
     if paid_at is None:
         return False, REASON_OUTSIDE_WINDOW
