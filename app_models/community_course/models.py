@@ -26,6 +26,10 @@ class Course(models.Model):
     community_groups = models.ManyToManyField(CommunityGroup, related_name='courses', blank=True, help_text='Community groups (tiers) that have access to this course')
     enforce_progression = models.BooleanField(default=False, help_text='If True, users must complete content in order (one at a time). Owners/moderators can view all content regardless.')
     issue_certificate = models.BooleanField(default=False, help_text='If True, users will receive a certificate when all content in the course is completed')
+    is_downloadable = models.BooleanField(
+        default=False,
+        help_text='When true, learners with course access may download lesson videos and materials',
+    )
     is_featured = models.BooleanField(
         default=False,
         help_text='If True, the course is listed on the public featured catalog.',
@@ -41,6 +45,10 @@ class Course(models.Model):
         ),
     )
     is_published = models.BooleanField(default=False, help_text='If True, the course is visible/published to members')
+    is_downloadable = models.BooleanField(
+        default=False,
+        help_text='When true, learners with course access may download lesson videos and materials',
+    )
     published_at = models.DateTimeField(
         blank=True,
         null=True,
