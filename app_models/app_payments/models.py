@@ -151,6 +151,91 @@ class UserWallet(models.Model):
         return f'{self.user.email} — {gw} ({self.status})'
 
 
+class UserEarning(models.Model):
+    """
+    Personal credit owed to a user (e.g. referral), paid out via UserWallet.
+    Mirrors PaymentTransaction community payout fields: amount, transferred_to_*,
+    transfer refs, and wallet FK — not community-linked.
+    """
+
+    KIND_REFERRAL = 'referral'
+    KIND_CHOICES = [
+        (KIND_REFERRAL, 'Referral'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='earnings',
+        help_text='User this credit is owed to',
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        help_text='Amount owed to the user',
+    )
+    currency = models.CharField(
+        max_length=3,
+        default='USD',
+        help_text='Currency code (USD, EUR, etc.)',
+    )
+    kind = models.CharField(
+        max_length=32,
+        choices=KIND_CHOICES,
+        default=KIND_REFERRAL,
+        help_text='How this credit was earned',
+    )
+    note = models.CharField(
+        max_length=255,
+        blank=True,
+        default='',
+        help_text='Optional short note shown to the user',
+    )
+    transferred_to_user = models.BooleanField(
+        default=False,
+        help_text='Whether amount has been paid out to the user wallet',
+    )
+    transferred_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the transfer to the user was completed',
+    )
+    user_wallet = models.ForeignKey(
+        UserWallet,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='earnings',
+        help_text='User wallet used when transferring amount (audit trail)',
+    )
+    stripe_transfer_id = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text='Stripe Transfer id when amount is paid out via Stripe',
+    )
+    paystack_transfer_reference = models.CharField(
+        max_length=255,
+        null=True,
+        blank=True,
+        help_text='Paystack transfer reference when amount is paid out via Paystack',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'UserEarning'
+        verbose_name = 'User earning'
+        verbose_name_plural = 'User earnings'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'transferred_to_user']),
+            models.Index(fields=['user', 'currency', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user_id} {self.amount} {self.currency} ({self.kind})'
+
+
 class CommunityWallet(models.Model):
     """
     Community payout destination. One wallet per community.
