@@ -1,3 +1,6 @@
+from decimal import Decimal
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
@@ -160,6 +163,14 @@ class CommunityMember(models.Model):
         default=_current_year,
         help_text='Deprecated: unused for leaderboard resets; cumulative points use points only.',
     )
+    referred_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referred_community_members',
+        help_text='Community referrer stamped once when this membership row is created.',
+    )
 
     class Meta:
         db_table = 'CommunityMember'
@@ -291,6 +302,17 @@ class CommunityGroup(models.Model):
         null=True,
         blank=True,
         help_text='Optional free trial length in days for paid tiers. Null or 0 means no trial.',
+    )
+    referral_bonus_enabled = models.BooleanField(
+        default=False,
+        help_text='If true, the community referrer may earn on the referred member’s first paid group charge.',
+    )
+    referral_bonus_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=Decimal('0.00'),
+        validators=[MinValueValidator(Decimal('0.00')), MaxValueValidator(Decimal('50.00'))],
+        help_text='Percent of community_amount (list price) paid to the referrer. Max 50.',
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

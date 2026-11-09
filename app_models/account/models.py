@@ -1,7 +1,8 @@
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager
-from django.db import models
+from django.db import IntegrityError, models, transaction
 from django.utils import timezone
 from django.utils.crypto import get_random_string
+from app_models.account.referral_code import allocate_referral_code
 from app_models.shared.validators import slug_username_validator
 
 
@@ -123,6 +124,20 @@ class User(AbstractBaseUser):
         default=0,
         help_text='Incremented to revoke all outstanding JWTs for this user.',
     )
+    referral_code = models.CharField(
+        max_length=10,
+        unique=True,
+        db_index=True,
+        help_text='Public referral code used in ?ref= links. Not the username.',
+    )
+    referred_by = models.ForeignKey(
+        'self',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referrals',
+        help_text='Platform referrer (set once at signup). Analytics only.',
+    )
 
     objects = CustomUserManager()
 
@@ -157,6 +172,27 @@ class User(AbstractBaseUser):
         )
         self.refresh_from_db(fields=['token_version'])
         return int(self.token_version or 0)
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        if self.referral_code:
+            super().save(*args, **kwargs)
+            return
+        last_error = None
+        for _ in range(8):
+            self.referral_code = allocate_referral_code(type(self))
+            if update_fields is not None:
+                kwargs['update_fields'] = {*update_fields, 'referral_code'}
+            try:
+                with transaction.atomic():
+                    super().save(*args, **kwargs)
+                return
+            except IntegrityError as exc:
+                last_error = exc
+                self.referral_code = ''
+                if 'referral_code' not in str(exc):
+                    raise
+        raise last_error or IntegrityError('Could not save user with a unique referral_code')
 
     def __str__(self):
         return self.email

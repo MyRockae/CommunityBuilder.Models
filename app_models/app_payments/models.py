@@ -151,23 +151,42 @@ class UserWallet(models.Model):
         return f'{self.user.email} — {gw} ({self.status})'
 
 
+def _userearning_kind_subject_check_constraint():
+    q = (
+        Q(kind='community_group', community_group__isnull=False, store_product__isnull=True)
+        | Q(kind='store_product', store_product__isnull=False, community_group__isnull=True)
+    )
+    name = 'userearning_kind_matches_subject'
+    if django.VERSION >= (5, 2):
+        return models.CheckConstraint(condition=q, name=name)
+    return models.CheckConstraint(check=q, name=name)
+
+
 class UserEarning(models.Model):
     """
-    Personal credit owed to a user (e.g. referral), paid out via UserWallet.
-    Mirrors PaymentTransaction community payout fields: amount, transferred_to_*,
-    transfer refs, and wallet FK — not community-linked.
+    Personal credit owed to a user for a referral commission, paid out via UserWallet.
+    One row per PaymentTransaction; group commissions also at most one per subscription.
     """
 
-    KIND_REFERRAL = 'referral'
+    KIND_COMMUNITY_GROUP = 'community_group'
+    KIND_STORE_PRODUCT = 'store_product'
     KIND_CHOICES = [
-        (KIND_REFERRAL, 'Referral'),
+        (KIND_COMMUNITY_GROUP, 'Community group'),
+        (KIND_STORE_PRODUCT, 'Store product'),
+    ]
+
+    STATUS_OWED = 'owed'
+    STATUS_CANCELLED = 'cancelled'
+    STATUS_CHOICES = [
+        (STATUS_OWED, 'Owed'),
+        (STATUS_CANCELLED, 'Cancelled'),
     ]
 
     user = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
         related_name='earnings',
-        help_text='User this credit is owed to',
+        help_text='Referrer this credit is owed to',
     )
     amount = models.DecimalField(
         max_digits=10,
@@ -182,14 +201,66 @@ class UserEarning(models.Model):
     kind = models.CharField(
         max_length=32,
         choices=KIND_CHOICES,
-        default=KIND_REFERRAL,
         help_text='How this credit was earned',
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=STATUS_CHOICES,
+        default=STATUS_OWED,
+        help_text='owed until paid out or cancelled on refund before transfer',
+    )
+    percent_snapshot = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        help_text='Referral percent applied when this earning was created',
     )
     note = models.CharField(
         max_length=255,
         blank=True,
         default='',
         help_text='Optional short note shown to the user',
+    )
+    payment_transaction = models.OneToOneField(
+        'PaymentTransaction',
+        on_delete=models.CASCADE,
+        related_name='referral_earning',
+        help_text='Succeeded charge this commission was calculated from',
+    )
+    referred_user = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='referral_earnings_as_buyer',
+        help_text='Member or buyer whose payment generated this credit',
+    )
+    community = models.ForeignKey(
+        'community.Community',
+        on_delete=models.CASCADE,
+        related_name='referral_earnings',
+        help_text='Community the referred payment belonged to',
+    )
+    community_group = models.ForeignKey(
+        'community.CommunityGroup',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referral_earnings',
+        help_text='Set when kind is community_group',
+    )
+    store_product = models.ForeignKey(
+        'community_store.StoreProduct',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referral_earnings',
+        help_text='Set when kind is store_product',
+    )
+    community_member_subscription = models.ForeignKey(
+        'app_subscription.CommunityMemberSubscription',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='referral_earnings',
+        help_text='Group subscription this commission is tied to (first payment only)',
     )
     transferred_to_user = models.BooleanField(
         default=False,
@@ -230,6 +301,14 @@ class UserEarning(models.Model):
         indexes = [
             models.Index(fields=['user', 'transferred_to_user']),
             models.Index(fields=['user', 'currency', '-created_at']),
+        ]
+        constraints = [
+            _userearning_kind_subject_check_constraint(),
+            models.UniqueConstraint(
+                fields=['community_member_subscription'],
+                condition=Q(community_member_subscription__isnull=False),
+                name='userearning_unique_group_subscription',
+            ),
         ]
 
     def __str__(self):
