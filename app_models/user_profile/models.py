@@ -28,6 +28,11 @@ class UserProfile(models.Model):
     country = models.CharField(max_length=100, null=True, blank=True, help_text='User country name')
     country_flag_url = models.URLField(blank=True, null=True, help_text='URL of the country flag')
     thumbnail_url = models.URLField(blank=True, null=True)
+    last_seen_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the user was last connected to community chat',
+    )
     bio = models.TextField(null=True, blank=True)
     about = models.TextField(null=True, blank=True, help_text='Detailed information about the user')
     interest = models.ManyToManyField(Tag, related_name='user_profiles', blank=True)
