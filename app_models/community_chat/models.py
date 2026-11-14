@@ -28,12 +28,29 @@ class ConversationParticipant(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
     last_read_at = models.DateTimeField(null=True, blank=True, help_text='When the user last read messages in this conversation')
     is_muted = models.BooleanField(default=False, help_text='Whether the user has muted this conversation')
+    email_notify_after = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When a delayed unread-chat email may send; cleared on read or after send',
+    )
+    last_chat_email_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text='When the last unread-chat email was sent for this thread',
+    )
     
     class Meta:
         db_table = 'ConversationParticipant'
         verbose_name = 'Conversation Participant'
         verbose_name_plural = 'Conversation Participants'
         unique_together = ['conversation', 'user']
+        indexes = [
+            models.Index(
+                fields=['email_notify_after'],
+                name='chat_part_email_notify_idx',
+                condition=models.Q(email_notify_after__isnull=False),
+            ),
+        ]
     
     def __str__(self):
         return f"{self.user.email} in conversation {self.conversation.id}"

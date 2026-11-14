@@ -31,6 +31,7 @@ class NotificationEvent(models.TextChoices):
     VIEWS_MOMENTUM = 'views_momentum', 'Community views momentum'
     MARKETING_CAMPAIGN = 'marketing_campaign', 'Marketing campaign'
     BADGE_EARNED = 'badge_earned', 'Badge earned'
+    DIRECT_MESSAGE = 'direct_message', 'Direct message'
 
 
 class NotificationBatchStatus(models.TextChoices):
